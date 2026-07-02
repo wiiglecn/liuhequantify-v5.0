@@ -17,6 +17,7 @@ from data_fetcher import load_history
 from analysis import build_report, summarize_for_llm
 from llm_reasoner import load_config, reason
 from predictor import predict_all, predict_special_groups
+from dimensions import predict_dimensions
 
 DISCLAIMER = (
     "科学提示: 彩票开奖本质为独立随机事件, 任何模型的真实命中率理论上均接近随机概率\n"
@@ -46,7 +47,7 @@ def main():
     print("运行时间:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print()
 
-    print("[1/6] 加载历史数据...")
+    print("[1/7] 加载历史数据...")
     records = load_history(years, refresh=args.refresh)
     if len(records) < 30:
         print("  ! 数据不足, 请检查网络或强制刷新(--refresh)。当前期数:", len(records))
@@ -55,14 +56,14 @@ def main():
     print(f"  ✓ 最近一期: 期号 {records[-1].expect} 平码 {records[-1].regular} 特码 {records[-1].special}")
     print()
 
-    print("[2/6] 统计分析与模型反推...")
+    print("[2/7] 统计分析与模型反推...")
     report = build_report(records)
     print("  反推理候选数学模型(拟合度 0-1, 越高越可能解释该序列):")
     for name, score, detail in report["models"]:
         print(f"    - {name}: {score:.3f}  ({detail})")
     print()
 
-    print("[3/6] 大模型反推理(可选)...")
+    print("[3/7] 大模型反推理(可选)...")
     cfg = load_config()
     llm_result = None
     if cfg:
@@ -78,7 +79,7 @@ def main():
         print("  ! 未配置 LLM(编辑 config.ini 填入 api_key), 跳过大模型, 仅用统计层。")
     print()
 
-    print("[4/6] 三组预测与回测...")
+    print("[4/7] 三组预测与回测...")
     groups = predict_all(records, llm_result=llm_result, backtest_n=args.backtest)
     for i, g in enumerate(groups):
         star = "  ★推荐" if i == 0 else ""
@@ -87,7 +88,7 @@ def main():
         print(f"      回测: 特码命中率={g.backtest_special_hit:.1%}  平均平码命中={g.backtest_regular_hits:.2f}/6")
     print()
 
-    print("[5/6] 五组特码预测与回测...")
+    print("[5/7] 五组特码预测与回测...")
     sp_groups = predict_special_groups(records, llm_result=llm_result, backtest_n=args.backtest)
     for i, g in enumerate(sp_groups):
         star = "  ★推荐" if i == 0 else ""
@@ -96,7 +97,16 @@ def main():
         print(f"      回测: 特码命中率={g.backtest_hit:.1%}")
     print()
 
-    print("[6/6] 完成")
+    print("[6/7] 六维度特码属性预测与回测...")
+    dims = predict_dimensions(records, llm_result=llm_result, backtest_n=args.backtest)
+    print(f"  {'维度':<6}{'预测值':<8}{'准确率':>8}{'随机基线':>10}{'lift':>8}{'标准误':>8}{'稳定性':>8}")
+    for d in dims:
+        print(f"  {d.name:<6}{d.value:<8}{d.accuracy:>8.1%}{d.baseline:>10.1%}"
+              f"{d.lift:>+8.1%}{d.std_error:>8.1%}{d.stability:>8.2f}")
+    print("  (lift>0 表示优于随机基线; 稳定性越小越稳定)")
+    print()
+
+    print("[7/7] 完成")
     print("-" * 70)
     print(DISCLAIMER)
 
