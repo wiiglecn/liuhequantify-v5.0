@@ -2,7 +2,7 @@ import unittest
 import random
 from data_fetcher import Record
 from analysis import build_report
-from special_pool import predict_special_pools, SpecialPool
+from special_pool import predict_special_pools, SpecialPool, predict_wide_pool, WidePool
 from llm_reasoner import LLMResult
 
 
@@ -54,6 +54,34 @@ class TestSpecialPools(unittest.TestCase):
         self.assertTrue(llm_pool)
         # LLM 号码应在集合中
         self.assertIn(7, llm_pool[0].numbers)
+
+
+class TestWidePool(unittest.TestCase):
+    def test_wide_pool_has_exactly_20_numbers(self):
+        random.seed(9)
+        recs = [mkrec(i) for i in range(60)]
+        wp = predict_wide_pool(recs, llm_result=None, backtest_n=10)
+        self.assertIsInstance(wp, WidePool)
+        self.assertEqual(len(wp.numbers), 20)
+        self.assertEqual(len(wp.numbers), len(set(wp.numbers)))  # 唯一
+        for n in wp.numbers:
+            self.assertIn(n, range(1, 50))
+        self.assertAlmostEqual(wp.baseline, 20 / 49, places=6)
+        self.assertGreaterEqual(wp.hit_rate, 0.0)
+        self.assertLessEqual(wp.hit_rate, 1.0)
+        self.assertAlmostEqual(wp.lift, wp.hit_rate - wp.baseline, places=6)
+
+    def test_wide_pool_with_llm_seeds(self):
+        random.seed(9)
+        recs = [mkrec(i) for i in range(60)]
+        llm = LLMResult(inferred_models=["马尔可夫"],
+                        predicted_set=[3, 12, 18, 25, 33, 41, 7, 14, 22, 30],
+                        reasoning="r")
+        wp = predict_wide_pool(recs, llm_result=llm, backtest_n=10)
+        self.assertEqual(len(wp.numbers), 20)
+        # LLM 提供的号应作为种子进入集合
+        for n in [3, 12, 18]:
+            self.assertIn(n, wp.numbers)
 
 
 if __name__ == "__main__":

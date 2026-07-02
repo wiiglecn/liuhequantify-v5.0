@@ -17,7 +17,8 @@ if sys.platform == "win32":
     except Exception:
         os.system("chcp 65001 >nul 2>&1")
 
-POOL_SIZE = 10  # 集合大小(8~10, 默认 10)
+POOL_SIZE = 10  # 小集合大小(8~10, 默认 10)
+WIDE_POOL_SIZE = 20  # 大集合大小(20颗)
 
 
 @dataclass
@@ -30,6 +31,18 @@ class SpecialPool:
     lift: float = 0.0           # 提升度
     std_error: float = 0.0      # 标准误
     stability: float = 0.0      # 稳定性
+
+
+@dataclass
+class WidePool:
+    """20 颗号码的大集合(单组)。"""
+    numbers: list         # 20 个号码(1-49, 唯一)
+    strategy: str         # 策略描述
+    hit_rate: float = 0.0
+    baseline: float = 0.0       # = 20/49
+    lift: float = 0.0
+    std_error: float = 0.0
+    stability: float = 0.0
 
 
 def _topn_by_weight(weights: dict, k: int) -> list:
@@ -157,3 +170,99 @@ def predict_special_pools(records, llm_result=None, backtest_n: int = 30,
         ))
     pools.sort(key=lambda p: p.hit_rate, reverse=True)
     return pools
+
+
+# ======================== 20 颗大集合(单组) ========================
+
+def _wide_score(records, report, llm_result):
+    """融合多信号为每个号码打分, 用于排序取 20 颗。"""
+    scores = {n: 0.0 for n in range(1, 50)}
+
+    # 1. 频率热号(归一化)
+    freq = report["freq"]
+    fmax = max(freq.values()) if freq and max(freq.values()) > 0 else 1
+    for n in range(1, 50):
+        scores[n] += (freq.get(n, 0) / fmax) * 3.0
+
+    # 2. 遗漏回归(遗漏越大越到期, 归一化)
+    gap = report["gap"]
+    gmax = max((gap[n]["current"] for n in range(1, 50)), default=1) or 1
+    for n in range(1, 50):
+        scores[n] += (gap[n]["current"] / gmax) * 2.0
+
+    # 3. 马尔可夫一阶: 上一期特码转移概率
+    last = records[-1].special if records else 0
+    trans = report["markov"].get(last, {})
+    tmax = max(trans.values()) if trans else 0
+    if tmax > 0:
+        for n, p in trans.items():
+            scores[n] += (p / tmax) * 2.5
+
+    # 4. 近期趋势(最近 20 期)
+    recent = records[-20:]
+    rc = Counter(r.special for r in recent)
+    rmax = max(rc.values()) if rc else 1
+    for n, c in rc.items():
+        scores[n] += (c / rmax) * 1.5
+
+    # 5. 大模型种子(LLM 号码加权)
+    if llm_result and llm_result.predicted_set:
+        llm_nums = [n for n in llm_result.predicted_set if isinstance(n, int) and 1 <= n <= 49]
+        for n in llm_nums:
+            scores[n] += 2.0
+
+    return scores
+
+
+def _build_wide_pool(records, report, llm_result, k=WIDE_POOL_SIZE):
+    """按融合得分取前 k 颗(默认 20)。"""
+    scores = _wide_score(records, report, llm_result)
+    ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    numbers = [n for n, _ in ranked[:k]]
+    # 保证大小(分数末位可能有并列, 取前 k 个)
+    if len(numbers) < k:
+        for n in range(1, 50):
+            if n not in numbers:
+                numbers.append(n)
+                if len(numbers) == k:
+                    break
+    return numbers[:k]
+
+
+def _backtest_wide_pool(records, llm_result, n: int, k: int):
+    """留一回测大集合: 集合含真实特码即命中。返回 (命中率, 基线, lift, 标准误, 稳定性)。"""
+    baseline = k / 49
+    n_clamped = max(1, min(n, len(records) - 10))
+    hits = []
+    for i in range(n_clamped):
+        split = len(records) - n_clamped + i
+        train = records[:split]
+        actual = records[split]
+        pool = set(_build_wide_pool(train, build_report(train), None, k))
+        hits.append(1 if actual.special in pool else 0)
+    accuracy = sum(hits) / n_clamped if n_clamped else 0.0
+    std_error = math.sqrt(accuracy * (1 - accuracy) / n_clamped) if n_clamped else 0.0
+    stab = rolling_stability(hits)
+    return accuracy, baseline, accuracy - baseline, std_error, stab
+
+
+def predict_wide_pool(records, llm_result=None, backtest_n: int = 30,
+                      k: int = WIDE_POOL_SIZE) -> WidePool:
+    """生成单组 20 颗号码的特码大集合, 并回测。"""
+    k = WIDE_POOL_SIZE
+    report = build_report(records)
+    numbers = _build_wide_pool(records, report, llm_result, k)
+    numbers = sorted(set(numbers))
+    if len(numbers) < k:
+        for n in range(1, 50):
+            if n not in numbers:
+                numbers.append(n)
+                if len(numbers) == k:
+                    break
+    hr, baseline, lift, se, stab = _backtest_wide_pool(records, llm_result, backtest_n, k)
+    return WidePool(
+        numbers=numbers,
+        strategy="频率+遗漏+马尔可夫+趋势+大模型 多信号融合",
+        hit_rate=hr, baseline=baseline, lift=lift,
+        std_error=se, stability=stab,
+    )
