@@ -1,21 +1,21 @@
 @echo off
 REM ============================================================
-REM  澳门六合彩开奖记录分析与预测软件 - 启动批处理
-REM  双击运行, 或在命令行执行本文件
+REM  Macau Mark Six lottery analysis and prediction launcher
+REM  Double-click to run, or execute in command prompt
 REM ============================================================
 chcp 65001 >nul
 cd /d "%~dp0"
 
 echo ============================================================
-echo   澳门六合彩开奖记录分析与预测软件
-echo   工作目录: %cd%
+echo   Macau Mark Six Analysis and Prediction
+echo   Working dir: %cd%
 echo ============================================================
 echo.
 
-REM 可在此修改回测期数 / 年份 / 是否强制刷新
+REM Adjust backtest periods / years / refresh here
 python -X utf8 macau_predictor.py --backtest 30
 
 echo.
 echo ============================================================
-echo   运行结束。按任意键关闭窗口...
+echo   Finished. Press any key to close...
 pause >nul
