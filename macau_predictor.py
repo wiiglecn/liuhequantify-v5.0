@@ -90,11 +90,12 @@ def main():
 
     print("[5/7] 五组特码预测与回测...")
     sp_groups = predict_special_groups(records, llm_result=llm_result, backtest_n=args.backtest)
+    print(f"  (随机基线 = 1/49 ≈ {1/49:.1%})")
     for i, g in enumerate(sp_groups):
         star = "  ★推荐" if i == 0 else ""
         print(f"  特码{g.name}组{star}: 特码 {g.special}")
         print(f"      策略: {g.strategy}")
-        print(f"      回测: 特码命中率={g.backtest_hit:.1%}")
+        print(f"      回测: 命中率={g.backtest_hit:.1%}  lift={g.lift:+.1%}  标准误={g.std_error:.1%}  稳定性={g.stability:.2f}")
     print()
 
     print("[6/7] 六维度特码属性预测与回测...")

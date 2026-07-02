@@ -179,6 +179,10 @@ class SpecialPrediction:
     special: int          # 预测特码 1-49
     strategy: str         # 策略描述
     backtest_hit: float = 0.0  # 回测特码命中率
+    baseline: float = 1 / 49       # 随机基线
+    lift: float = 0.0              # 提升度 = 命中率 - 基线
+    std_error: float = 0.0         # 标准误差
+    stability: float = 0.0         # 滚动命中率标准差
 
 
 def _sp_hot(records, report, llm_result):
@@ -241,19 +245,17 @@ SPECIAL_STRATEGIES = [
 ]
 
 
-def _backtest_special(records, sp_func, llm_result, n: int = 30) -> float:
-    """留一回测特码命中率。回测时 llm_result 传 None(无法逐期调用 LLM)。"""
-    n = max(1, min(n, len(records) - 20))
-    hits = 0
-    for i in range(n):
-        split = len(records) - n + i
-        train = records[:split]
-        actual = records[split]
-        report = build_report(train)
-        pred = sp_func(train, report, None)
-        if pred == actual.special:
-            hits += 1
-    return hits / n
+def _backtest_special(records, sp_func, llm_result, n: int = 30):
+    """留一回测特码。返回 (命中率, 基线, lift, 标准误, 稳定性)。
+    回测时 llm_result 传 None(无法逐期调用 LLM)。"""
+    from backtest_utils import backtest_series, rolling_stability
+    bt = backtest_series(
+        predict_func=lambda train: sp_func(train, build_report(train), None),
+        actual_func=lambda r: r.special,
+        records=records, n=n, baseline=1 / 49,
+    )
+    stab = rolling_stability(bt.hit_series or [])
+    return bt.accuracy, bt.baseline, bt.lift, bt.std_error, stab
 
 
 def predict_special_groups(records, llm_result=None, backtest_n: int = 30) -> list:
@@ -262,8 +264,11 @@ def predict_special_groups(records, llm_result=None, backtest_n: int = 30) -> li
     groups = []
     for name, fn, desc in SPECIAL_STRATEGIES:
         special = fn(records, report, llm_result)
-        hit = _backtest_special(records, fn, llm_result, n=backtest_n)
-        groups.append(SpecialPrediction(name=name, special=special,
-                                        strategy=desc, backtest_hit=hit))
+        hit, baseline, lift, se, stab = _backtest_special(records, fn, llm_result, n=backtest_n)
+        groups.append(SpecialPrediction(
+            name=name, special=special, strategy=desc,
+            backtest_hit=hit, baseline=baseline, lift=lift,
+            std_error=se, stability=stab,
+        ))
     groups.sort(key=lambda g: g.backtest_hit, reverse=True)
     return groups
