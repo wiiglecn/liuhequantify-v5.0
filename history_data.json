@@ -1,0 +1,813 @@
+[
+  {
+    "period": "141",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "蛇",
+    "result_zodiac": "蛇",
+    "result_number": 2,
+    "accurate": true
+  },
+  {
+    "period": "142",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "牛",
+    "result_zodiac": "牛",
+    "result_number": 18,
+    "accurate": true
+  },
+  {
+    "period": "144",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "虎",
+    "result_zodiac": "虎",
+    "result_number": 29,
+    "accurate": true
+  },
+  {
+    "period": "145",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "马",
+    "result_zodiac": "马",
+    "result_number": 25,
+    "accurate": true
+  },
+  {
+    "period": "146",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "猴",
+    "result_zodiac": "猴",
+    "result_number": 11,
+    "accurate": true
+  },
+  {
+    "period": "140",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "兔",
+      "龙",
+      "猴",
+      "狗",
+      "猪"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      27,
+      16,
+      23,
+      32,
+      33
+    ],
+    "code_4": [
+      27,
+      16,
+      23,
+      32
+    ],
+    "code_2": [
+      27,
+      16
+    ],
+    "highlight_zodiac": [
+      "兔"
+    ],
+    "highlight_code": [
+      16
+    ]
+  },
+  {
+    "period": "141",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "牛",
+      "龙",
+      "蛇",
+      "狗",
+      "猪"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      18,
+      32,
+      33,
+      38,
+      27
+    ],
+    "code_4": [
+      18,
+      32,
+      33,
+      38
+    ],
+    "code_2": [],
+    "highlight_zodiac": [
+      "狗"
+    ],
+    "highlight_code": [
+      33
+    ]
+  },
+  {
+    "period": "142",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "牛",
+      "羊",
+      "猴",
+      "鸡",
+      "猪"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [],
+    "code_4": [],
+    "code_2": [],
+    "highlight_zodiac": [
+      "猴"
+    ],
+    "highlight_code": []
+  },
+  {
+    "period": "143",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "鼠",
+      "牛",
+      "虎",
+      "鸡",
+      "猪"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [],
+    "code_4": [],
+    "code_2": [],
+    "highlight_zodiac": [
+      "猪"
+    ],
+    "highlight_code": []
+  },
+  {
+    "period": "145",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "牛",
+      "虎",
+      "马",
+      "猴",
+      "鸡"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [],
+    "code_4": [],
+    "code_2": [],
+    "highlight_zodiac": [
+      "虎"
+    ],
+    "highlight_code": []
+  },
+  {
+    "period": "146",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "牛",
+      "蛇",
+      "马",
+      "羊",
+      "猴"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      25,
+      14,
+      42,
+      24,
+      35
+    ],
+    "code_4": [
+      25,
+      14,
+      42,
+      24
+    ],
+    "code_2": [],
+    "highlight_zodiac": [
+      "牛"
+    ],
+    "highlight_code": [
+      42
+    ]
+  },
+  {
+    "period": "147",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "兔",
+      "龙",
+      "蛇",
+      "马",
+      "羊"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [],
+    "code_4": [],
+    "code_2": [],
+    "highlight_zodiac": [
+      "马"
+    ],
+    "highlight_code": []
+  },
+  {
+    "period": "148",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      18
+    ],
+    "code_4": [],
+    "code_2": [],
+    "highlight_zodiac": [],
+    "highlight_code": []
+  },
+  {
+    "period": "144",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "鼠",
+    "numbers": [
+      18,
+      17
+    ],
+    "result_zodiac": "鼠",
+    "result_number": 43,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "145",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "虎",
+    "numbers": [
+      12,
+      13
+    ],
+    "result_zodiac": "虎",
+    "result_number": 5,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "146",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "牛",
+    "numbers": [
+      35,
+      14
+    ],
+    "result_zodiac": "牛",
+    "result_number": 42,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "147",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "马",
+    "numbers": [
+      22,
+      16
+    ],
+    "result_zodiac": "马",
+    "result_number": 13,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "148",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [],
+    "result_zodiac": "蛇",
+    "result_number": 2,
+    "accurate": false
+  },
+  {
+    "period": "144",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      41,
+      42,
+      43
+    ],
+    "result_zodiac": "鼠",
+    "result_number": 43,
+    "accurate": true
+  },
+  {
+    "period": "145",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      6,
+      5,
+      8
+    ],
+    "result_zodiac": "虎",
+    "result_number": 5,
+    "accurate": true
+  },
+  {
+    "period": "146",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      41,
+      42,
+      43
+    ],
+    "result_zodiac": "牛",
+    "result_number": 42,
+    "accurate": true
+  },
+  {
+    "period": "147",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      24,
+      13,
+      11
+    ],
+    "result_zodiac": "马",
+    "result_number": 13,
+    "accurate": true
+  },
+  {
+    "period": "161",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "牛",
+      "马",
+      "羊",
+      "猴",
+      "鸡"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      13,
+      12,
+      23,
+      18,
+      22
+    ],
+    "code_4": [
+      13,
+      12,
+      23,
+      18
+    ],
+    "code_2": [
+      13,
+      12
+    ],
+    "highlight_zodiac": [],
+    "highlight_code": []
+  },
+  {
+    "period": "157",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      28,
+      40,
+      17
+    ],
+    "result_zodiac": "兔",
+    "result_number": 40,
+    "accurate": true
+  },
+  {
+    "period": "158",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      16,
+      20,
+      21
+    ],
+    "result_zodiac": "兔",
+    "result_number": 16,
+    "accurate": true
+  },
+  {
+    "period": "159",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      18,
+      39,
+      42
+    ],
+    "result_zodiac": "龙",
+    "result_number": 39,
+    "accurate": true
+  },
+  {
+    "period": "160",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      2,
+      1,
+      4
+    ],
+    "result_zodiac": "蛇",
+    "result_number": 2,
+    "accurate": true
+  },
+  {
+    "period": "152",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "马",
+    "result_zodiac": "马",
+    "result_number": 1,
+    "accurate": true
+  },
+  {
+    "period": "153",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "兔",
+    "result_zodiac": "兔",
+    "result_number": 28,
+    "accurate": true
+  },
+  {
+    "period": "154",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "牛",
+    "result_zodiac": "牛",
+    "result_number": 42,
+    "accurate": true
+  },
+  {
+    "period": "155",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "猴",
+    "result_zodiac": "猴",
+    "result_number": 47,
+    "accurate": true
+  },
+  {
+    "period": "156",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "马",
+    "result_zodiac": "马",
+    "result_number": 37,
+    "accurate": true
+  },
+  {
+    "period": "157",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "猴",
+    "result_zodiac": "猴",
+    "result_number": 11,
+    "accurate": true
+  },
+  {
+    "period": "157",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "兔",
+    "numbers": [
+      14,
+      41
+    ],
+    "result_zodiac": "兔",
+    "result_number": 40,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "159",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "龙",
+    "numbers": [
+      12,
+      14
+    ],
+    "result_zodiac": "龙",
+    "result_number": 39,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "160",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "蛇",
+    "numbers": [
+      17,
+      20
+    ],
+    "result_zodiac": "蛇",
+    "result_number": 2,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "176",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "牛",
+      "龙",
+      "羊",
+      "鸡",
+      "狗"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      10,
+      48,
+      33,
+      42,
+      27
+    ],
+    "code_4": [
+      10,
+      48,
+      33,
+      42
+    ],
+    "code_2": [
+      10,
+      48
+    ],
+    "highlight_zodiac": [
+      "鸡"
+    ],
+    "highlight_code": [
+      10
+    ],
+    "result_zodiac": "鸡",
+    "result_number": 10,
+    "accurate": true,
+    "highlight_accurate": true
+  },
+  {
+    "period": "179",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "虎",
+      "龙",
+      "马",
+      "羊",
+      "猴"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      15,
+      25,
+      23,
+      12,
+      29
+    ],
+    "code_4": [
+      15,
+      25,
+      23,
+      12
+    ],
+    "code_2": [
+      15,
+      25
+    ],
+    "highlight_zodiac": [
+      "龙"
+    ],
+    "highlight_code": [
+      15
+    ],
+    "result_zodiac": "龙",
+    "result_number": 15,
+    "accurate": true,
+    "highlight_accurate": true
+  },
+  {
+    "period": "180",
+    "source": "金光佛870567",
+    "type": "五肖⑤码",
+    "zodiac_5": [
+      "牛",
+      "虎",
+      "马",
+      "羊",
+      "猴"
+    ],
+    "zodiac_3": [],
+    "zodiac_2": [],
+    "code_5": [
+      12,
+      30,
+      13,
+      17,
+      23
+    ],
+    "code_4": [
+      12,
+      30,
+      13,
+      17
+    ],
+    "code_2": [
+      12,
+      30
+    ],
+    "highlight_zodiac": [],
+    "highlight_code": []
+  },
+  {
+    "period": "176",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      10,
+      12,
+      18
+    ],
+    "result_zodiac": "鸡",
+    "result_number": 10,
+    "accurate": true
+  },
+  {
+    "period": "177",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      12,
+      13,
+      14
+    ],
+    "result_zodiac": "蛇",
+    "result_number": 14,
+    "accurate": true
+  },
+  {
+    "period": "178",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      20,
+      18,
+      19
+    ],
+    "result_zodiac": "牛",
+    "result_number": 18,
+    "accurate": true
+  },
+  {
+    "period": "179",
+    "source": "广东内幕三码",
+    "type": "内幕三码",
+    "numbers": [
+      12,
+      13,
+      15
+    ],
+    "result_zodiac": "龙",
+    "result_number": 15,
+    "accurate": true
+  },
+  {
+    "period": "173",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "龙",
+    "result_zodiac": "龙",
+    "result_number": 39,
+    "accurate": true
+  },
+  {
+    "period": "174",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "马",
+    "result_zodiac": "马",
+    "result_number": 13,
+    "accurate": true
+  },
+  {
+    "period": "175",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "牛",
+    "result_zodiac": "牛",
+    "result_number": 30,
+    "accurate": true
+  },
+  {
+    "period": "176",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "蛇",
+    "result_zodiac": "蛇",
+    "result_number": 38,
+    "accurate": true
+  },
+  {
+    "period": "177",
+    "source": "金光佛平特一肖",
+    "type": "平特一肖",
+    "zodiac": "鼠",
+    "result_zodiac": "鼠",
+    "result_number": 19,
+    "accurate": true
+  },
+  {
+    "period": "176",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "鸡",
+    "numbers": [
+      23,
+      16
+    ],
+    "result_zodiac": "鸡",
+    "result_number": 10,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "177",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "蛇",
+    "numbers": [
+      22,
+      17
+    ],
+    "result_zodiac": "蛇",
+    "result_number": 14,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  },
+  {
+    "period": "178",
+    "source": "一肖②码",
+    "type": "一肖②码",
+    "zodiac": "牛",
+    "numbers": [
+      17,
+      23
+    ],
+    "result_zodiac": "牛",
+    "result_number": 18,
+    "zodiac_accurate": true,
+    "number_accurate": false,
+    "accurate": true
+  }
+]
