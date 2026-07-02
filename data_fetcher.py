@@ -118,20 +118,33 @@ def load_cache(path: str = CACHE_FILE) -> list:
 
 
 def load_history(years: list, refresh: bool = False) -> list:
-    """加载多年记录, 优先用缓存, refresh=True 强制重新抓取。"""
-    cached = load_cache() if not refresh else []
-    if cached and not refresh:
-        return cached
+    """加载多年记录。
+    - refresh=True: 重新抓取所有年份 + 最新期。
+    - refresh=False: 用缓存作底, 再抓取最新一期增量合并(保证拿到最新开奖)。
+      最新一期抓取失败则回退缓存。
+    """
+    if refresh:
+        cached = []
+    else:
+        cached = load_cache()
+
     lists = []
-    for y in years:
-        try:
-            lists.append([parse_record(r) for r in fetch_year(y)])
-        except Exception as e:
-            print(f"  ! 抓取 {y} 年失败: {e}")
+    if not cached:
+        # 无缓存: 抓取所有年份
+        for y in years:
+            try:
+                lists.append([parse_record(r) for r in fetch_year(y)])
+            except Exception as e:
+                print(f"  ! 抓取 {y} 年失败: {e}")
+    else:
+        lists.append(cached)
+
+    # 始终抓取最新一期, 与缓存合并(增量更新)
     try:
         lists.append([parse_record(r) for r in fetch_latest()])
     except Exception as e:
-        print(f"  ! 抓取最新期失败: {e}")
+        print(f"  ! 抓取最新期失败, 使用缓存: {e}")
+
     merged = merge_records(lists)
     if merged:
         save_cache(merged)
