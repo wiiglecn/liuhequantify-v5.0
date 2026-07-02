@@ -44,3 +44,34 @@
 
   运行方式：
   python -X utf8 lottery_analyzer.py
+
+---
+
+## 澳门六合彩开奖记录分析与预测软件 (macau_predictor)
+
+功能: 自动读取 https://macaujc.com 历史开奖记录, 采用统计模型 + 大模型反推理,
+给出下一期三组预测(6平码+1特码), 回测评估各组命中率并推荐, 罗列反推理出的数学模型。
+
+模块结构:
+  - data_fetcher.py   数据抓取/解析/缓存 (macaujc.com JSON API)
+  - analysis.py       统计分析: 卡方均匀性/冷热号/遗漏值/马尔可夫/自相关/和值正态
+  - llm_reasoner.py   大模型反推理 (OpenAI 兼容接口, 可降级)
+  - predictor.py      三组预测 + 留一回测
+  - macau_predictor.py 主入口 CLI
+
+运行方式:
+  python -X utf8 macau_predictor.py [--refresh] [--years 2024,2025,2026] [--backtest 30]
+
+参数:
+  --refresh    强制重新抓取数据(否则优先用本地缓存 macau_history.json)
+  --years      抓取年份, 逗号分隔, 默认 2024,2025,2026
+  --backtest   回测期数, 默认 30
+
+大模型配置: 编辑 config.ini 填入 OpenAI 兼容接口的 base_url / api_key / model
+(如 DeepSeek、通义、Moonshot、OpenAI)。未配置时自动降级为纯统计模型。
+
+运行测试:
+  python -X utf8 -m unittest discover -s tests -v
+
+输出: 数据概览 + 反推理数学模型清单(含拟合度) + 三组预测(标注特码) +
+      各组回测命中率 + 推荐组 + 科学免责声明。
