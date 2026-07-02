@@ -169,3 +169,101 @@ def predict_all(records, llm_result=None, backtest_n: int = 30) -> list:
     raw_groups.sort(key=lambda g: (g.backtest_special_hit * 6 + g.backtest_regular_hits),
                     reverse=True)
     return raw_groups
+
+
+# ======================== 五组特码预测 ========================
+
+@dataclass
+class SpecialPrediction:
+    name: str
+    special: int          # 预测特码 1-49
+    strategy: str         # 策略描述
+    backtest_hit: float = 0.0  # 回测特码命中率
+
+
+def _sp_hot(records, report, llm_result):
+    """频率最高热号。"""
+    return max(range(1, 50), key=lambda n: report["freq"].get(n, 0))
+
+
+def _sp_markov1(records, report, llm_result):
+    """马尔可夫一阶: 上一期特码之后转移概率最高的号。"""
+    last = records[-1].special if records else 0
+    trans = report["markov"].get(last, {})
+    if trans:
+        return max(trans, key=trans.get)
+    return _sp_hot(records, report, llm_result)
+
+
+def _sp_markov2(records, report, llm_result):
+    """马尔可夫二阶: 上两期特码之后转移概率最高的号。"""
+    if len(records) < 2:
+        return _sp_hot(records, report, llm_result)
+    key = (records[-2].special, records[-1].special)
+    trans = report["markov2"].get(key, {})
+    if trans:
+        return max(trans, key=trans.get)
+    return _sp_markov1(records, report, llm_result)
+
+
+def _sp_due(records, report, llm_result):
+    """遗漏回归: 当前遗漏期数最大的号(冷号到期)。"""
+    return max(range(1, 50), key=lambda n: report["gap"][n]["current"])
+
+
+def _sp_autocorr(records, report, llm_result):
+    """周期回归: 近 7 期特码众数(lag-7 周期假设)。"""
+    from collections import Counter
+    recent = [r.special for r in records[-7:]]
+    if recent:
+        return Counter(recent).most_common(1)[0][0]
+    return _sp_hot(records, report, llm_result)
+
+
+def _sp_llm(records, report, llm_result):
+    """大模型推理特码; 无 LLM 时退化为周期回归。"""
+    if llm_result and llm_result.predicted_set:
+        nums = [n for n in llm_result.predicted_set if 1 <= n <= 49]
+        if len(nums) >= 7:
+            return nums[6]
+        if nums:
+            return nums[-1]
+    return _sp_autocorr(records, report, llm_result)
+
+
+# 五组特码策略: (名称, 策略函数, 描述)
+SPECIAL_STRATEGIES = [
+    ("A", _sp_hot, "频率热号"),
+    ("B", _sp_markov1, "马尔可夫一阶转移"),
+    ("C", _sp_markov2, "马尔可夫二阶转移"),
+    ("D", _sp_due, "遗漏值回归"),
+    ("E", _sp_llm, "大模型/周期回归"),
+]
+
+
+def _backtest_special(records, sp_func, llm_result, n: int = 30) -> float:
+    """留一回测特码命中率。回测时 llm_result 传 None(无法逐期调用 LLM)。"""
+    n = max(1, min(n, len(records) - 20))
+    hits = 0
+    for i in range(n):
+        split = len(records) - n + i
+        train = records[:split]
+        actual = records[split]
+        report = build_report(train)
+        pred = sp_func(train, report, None)
+        if pred == actual.special:
+            hits += 1
+    return hits / n
+
+
+def predict_special_groups(records, llm_result=None, backtest_n: int = 30) -> list:
+    """生成五组特码预测并回测, 按回测命中率降序排序。"""
+    report = build_report(records)
+    groups = []
+    for name, fn, desc in SPECIAL_STRATEGIES:
+        special = fn(records, report, llm_result)
+        hit = _backtest_special(records, fn, llm_result, n=backtest_n)
+        groups.append(SpecialPrediction(name=name, special=special,
+                                        strategy=desc, backtest_hit=hit))
+    groups.sort(key=lambda g: g.backtest_hit, reverse=True)
+    return groups

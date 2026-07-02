@@ -4,7 +4,8 @@ from data_fetcher import Record
 from analysis import build_report
 from predictor import (weighted_sample, sample_with_sum_constraint,
                        predict_group_a, predict_group_b, predict_group_c,
-                       backtest, predict_all)
+                       backtest, predict_all,
+                       predict_special_groups, SpecialPrediction)
 from llm_reasoner import LLMResult
 
 
@@ -77,6 +78,38 @@ class TestBacktest(unittest.TestCase):
         # 推荐组(第1个)综合命中率应 >= 其他
         rates = [g.backtest_special_hit + g.backtest_regular_hits / 10 for g in groups]
         self.assertGreaterEqual(rates[0], rates[-1])
+
+
+class TestSpecialGroups(unittest.TestCase):
+    def test_five_special_groups_without_llm(self):
+        random.seed(11)
+        recs = [mkrec(i) for i in range(60)]
+        groups = predict_special_groups(recs, llm_result=None, backtest_n=10)
+        self.assertEqual(len(groups), 5)
+        for g in groups:
+            self.assertIsInstance(g, SpecialPrediction)
+            self.assertIn(g.special, range(1, 50))
+            self.assertGreaterEqual(g.backtest_hit, 0.0)
+            self.assertLessEqual(g.backtest_hit, 1.0)
+
+    def test_five_special_groups_sorted_desc(self):
+        random.seed(11)
+        recs = [mkrec(i) for i in range(60)]
+        groups = predict_special_groups(recs, llm_result=None, backtest_n=10)
+        hits = [g.backtest_hit for g in groups]
+        self.assertEqual(hits, sorted(hits, reverse=True))
+
+    def test_five_special_groups_with_llm(self):
+        random.seed(11)
+        recs = [mkrec(i) for i in range(60)]
+        llm = LLMResult(inferred_models=["马尔可夫"],
+                        predicted_set=[3, 12, 18, 25, 33, 41, 7], reasoning="r")
+        groups = predict_special_groups(recs, llm_result=llm, backtest_n=10)
+        self.assertEqual(len(groups), 5)
+        # LLM 策略组应取 llm 特码 7
+        llm_group = [g for g in groups if "大模型" in g.strategy]
+        self.assertTrue(llm_group)
+        self.assertEqual(llm_group[0].special, 7)
 
 
 if __name__ == "__main__":
