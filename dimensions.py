@@ -28,6 +28,18 @@ class DimensionPrediction:
     stability: float = 0.0      # 滚动命中率标准差(越小越稳)
 
 
+@dataclass
+class ZodiacPool:
+    """特码三生肖预测(单组, 3 个生肖)。"""
+    zodiacs: list        # 3 个生肖
+    strategy: str
+    hit_rate: float = 0.0
+    baseline: float = 0.0       # = 3/12
+    lift: float = 0.0
+    std_error: float = 0.0
+    stability: float = 0.0
+
+
 # ======================== 维度取值函数 ========================
 
 def wave_of(rec) -> str:
@@ -38,6 +50,11 @@ def wave_of(rec) -> str:
 def zodiac_of(rec) -> str:
     """特码生肖。"""
     return rec.zodiacs[6] if len(rec.zodiacs) > 6 else (rec.zodiacs[-1] if rec.zodiacs else "")
+
+
+# 别名: 特码生肖(zodiac_of 的语义化名称)
+def special_zodiac_of(rec) -> str:
+    return zodiac_of(rec)
 
 
 def tail_of(rec) -> int:
@@ -145,3 +162,91 @@ def predict_dimensions(records, llm_result=None, backtest_n: int = 30) -> list:
             stability=rolling_stability(bt.hit_series or []),
         ))
     return results
+
+
+# ======================== 特码三生肖预测(单组) ========================
+
+ZODIAC_POOL_SIZE = 3
+
+
+def _zodiac_scores(records):
+    """融合多信号为每个生肖打分, 用于排序取前 3。"""
+    seq = [special_zodiac_of(r) for r in records if special_zodiac_of(r)]
+    if not seq:
+        return {}
+    all_zodiacs = set(seq) | {special_zodiac_of(r) for r in records}
+    scores = {z: 0.0 for z in all_zodiacs}
+
+    # 1. 频率(归一化)
+    c = Counter(seq)
+    cmax = max(c.values()) or 1
+    for z, cnt in c.items():
+        scores[z] += (cnt / cmax) * 3.0
+
+    # 2. 马尔可夫一阶: 上一期生肖之后转移概率最高的
+    trans = defaultdict(Counter)
+    for a, b in zip(seq[:-1], seq[1:]):
+        trans[a][b] += 1
+    last = seq[-1]
+    if last in trans and trans[last]:
+        tmax = max(trans[last].values())
+        for z, p in trans[last].items():
+            scores[z] += (p / tmax) * 2.5
+
+    # 3. 遗漏回归: 当前遗漏最大的生肖
+    last_seen = {}
+    for i, z in enumerate(seq):
+        last_seen[z] = i
+    total = len(seq)
+    gaps = {z: (total - 1 - last_seen[z]) for z in last_seen}
+    gmax = max(gaps.values()) if gaps else 1
+    if gmax > 0:
+        for z, g in gaps.items():
+            scores[z] += (g / gmax) * 2.0
+
+    return scores
+
+
+def _build_zodiac_pool(records, k=ZODIAC_POOL_SIZE):
+    """按融合得分取前 k 个生肖。"""
+    scores = _zodiac_scores(records)
+    ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    zodiacs = [z for z, _ in ranked[:k]]
+    # 不足 k 个补齐(按频率)
+    if len(zodiacs) < k:
+        seq = [special_zodiac_of(r) for r in records if special_zodiac_of(r)]
+        c = Counter(seq)
+        for z, _ in c.most_common():
+            if z not in zodiacs:
+                zodiacs.append(z)
+                if len(zodiacs) == k:
+                    break
+    return zodiacs[:k]
+
+
+def predict_zodiac_pool(records, llm_result=None, backtest_n: int = 30) -> ZodiacPool:
+    """生成单组 3 个最可能开出特码的生肖, 并回测。"""
+    import math
+    k = ZODIAC_POOL_SIZE
+    baseline = k / 12
+    zodiacs = _build_zodiac_pool(records, k)
+
+    # 留一回测: 真实特码生肖落在 3 个内即命中
+    n_clamped = max(1, min(backtest_n, len(records) - 10))
+    hits = []
+    for i in range(n_clamped):
+        split = len(records) - n_clamped + i
+        train = records[:split]
+        actual = records[split]
+        pool = set(_build_zodiac_pool(train, k))
+        hits.append(1 if special_zodiac_of(actual) in pool else 0)
+    accuracy = sum(hits) / n_clamped if n_clamped else 0.0
+    std_error = math.sqrt(accuracy * (1 - accuracy) / n_clamped) if n_clamped else 0.0
+    stab = rolling_stability(hits)
+
+    return ZodiacPool(
+        zodiacs=zodiacs,
+        strategy="频率+马尔可夫+遗漏 多信号融合",
+        hit_rate=accuracy, baseline=baseline, lift=accuracy - baseline,
+        std_error=std_error, stability=stab,
+    )

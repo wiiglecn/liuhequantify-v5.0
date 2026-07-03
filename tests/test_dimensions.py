@@ -3,7 +3,7 @@ import random
 from data_fetcher import Record
 from dimensions import (predict_dimensions, DimensionPrediction,
                         wave_of, zodiac_of, tail_of, big_small_of, odd_even_of,
-                        head_of)
+                        head_of, predict_zodiac_pool, ZodiacPool, special_zodiac_of)
 
 
 def mk(expect, special, wave="red", zodiac="鼠"):
@@ -57,6 +57,25 @@ class TestPredictDimensions(unittest.TestCase):
         self.assertAlmostEqual(by_name["大小"].baseline, 1 / 2)
         self.assertAlmostEqual(by_name["奇偶"].baseline, 1 / 2)
         self.assertAlmostEqual(by_name["头数"].baseline, 1 / 5)
+
+
+class TestZodiacPool(unittest.TestCase):
+    def test_returns_three_zodiacs(self):
+        random.seed(8)
+        zodiacs_cycle = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"]
+        recs = [mk(str(i), (i % 49) + 1, zodiac=zodiacs_cycle[i % 12]) for i in range(60)]
+        zp = predict_zodiac_pool(recs, llm_result=None, backtest_n=10)
+        self.assertIsInstance(zp, ZodiacPool)
+        self.assertEqual(len(zp.zodiacs), 3)
+        self.assertEqual(len(zp.zodiacs), len(set(zp.zodiacs)))  # 唯一
+        self.assertAlmostEqual(zp.baseline, 3 / 12)
+        self.assertGreaterEqual(zp.hit_rate, 0.0)
+        self.assertLessEqual(zp.hit_rate, 1.0)
+        self.assertAlmostEqual(zp.lift, zp.hit_rate - zp.baseline, places=6)
+
+    def test_special_zodiac_of(self):
+        r = mk("1", 41, zodiac="虎")
+        self.assertEqual(special_zodiac_of(r), "虎")
 
 
 if __name__ == "__main__":

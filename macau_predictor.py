@@ -17,7 +17,7 @@ from data_fetcher import load_history
 from analysis import build_report, summarize_for_llm
 from llm_reasoner import load_config, reason
 from predictor import predict_all, predict_special_groups
-from dimensions import predict_dimensions
+from dimensions import predict_dimensions, predict_zodiac_pool
 from special_pool import predict_special_pools, predict_wide_pool
 
 DISCLAIMER = (
@@ -29,10 +29,12 @@ DISCLAIMER = (
 
 def box(title: str) -> str:
     width = 70
+    timesVal = "运行时间:" + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     top = "╔" + "═" * width + "╗"
-    mid = "║" + title.center(width) + "║"
+    mid = "║" + title.center(width - 16) + "║"
+    mid2 = "║" + timesVal.center(width - 4) + "║"
     bot = "╚" + "═" * width + "╝"
-    return "\n".join([top, mid, bot])
+    return "\n".join([top, mid, mid2, bot])
 
 
 def main():
@@ -45,10 +47,10 @@ def main():
     years = [int(y.strip()) for y in args.years.split(",") if y.strip()]
 
     print(box("澳门六合彩开奖记录分析与预测软件"))
-    print("运行时间:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    # print("运行时间:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print()
 
-    print("[1/9] 加载历史数据...")
+    print("[1/10] 加载历史数据...")
     records = load_history(years, refresh=args.refresh)
     if len(records) < 30:
         print("  ! 数据不足, 请检查网络或强制刷新(--refresh)。当前期数:", len(records))
@@ -57,14 +59,14 @@ def main():
     print(f"  ✓ 最近一期: 期号 {records[-1].expect} 平码 {records[-1].regular} 特码 {records[-1].special}")
     print()
 
-    print("[2/9] 统计分析与模型反推...")
+    print("[2/10] 统计分析与模型反推...")
     report = build_report(records)
     print("  反推理候选数学模型(拟合度 0-1, 越高越可能解释该序列):")
     for name, score, detail in report["models"]:
         print(f"    - {name}: {score:.3f}  ({detail})")
     print()
 
-    print("[3/9] 大模型反推理(可选)...")
+    print("[3/10] 大模型反推理(可选)...")
     cfg = load_config()
     llm_result = None
     if cfg:
@@ -80,7 +82,7 @@ def main():
         print("  ! 未配置 LLM(编辑 config.ini 填入 api_key), 跳过大模型, 仅用统计层。")
     print()
 
-    print("[4/9] 三组预测与回测...")
+    print("[4/10] 三组预测与回测...")
     groups = predict_all(records, llm_result=llm_result, backtest_n=args.backtest)
     for i, g in enumerate(groups):
         star = "  ★推荐" if i == 0 else ""
@@ -89,7 +91,7 @@ def main():
         print(f"      回测: 特码命中率={g.backtest_special_hit:.1%}  平均平码命中={g.backtest_regular_hits:.2f}/6")
     print()
 
-    print("[5/9] 五组特码预测与回测...")
+    print("[5/10] 五组特码预测与回测...")
     sp_groups = predict_special_groups(records, llm_result=llm_result, backtest_n=args.backtest)
     print(f"  (随机基线 = 1/49 ≈ {1/49:.1%})")
     for i, g in enumerate(sp_groups):
@@ -99,7 +101,7 @@ def main():
         print(f"      回测: 命中率={g.backtest_hit:.1%}  lift={g.lift:+.1%}  标准误={g.std_error:.1%}  稳定性={g.stability:.2f}")
     print()
 
-    print("[6/9] 六维度特码属性预测与回测...")
+    print("[6/10] 六维度特码属性预测与回测...")
     dims = predict_dimensions(records, llm_result=llm_result, backtest_n=args.backtest)
     print(f"  {'维度':<6}{'预测值':<8}{'准确率':>8}{'随机基线':>10}{'lift':>8}{'标准误':>8}{'稳定性':>8}")
     for d in dims:
@@ -108,7 +110,7 @@ def main():
     print("  (lift>0 表示优于随机基线; 稳定性越小越稳定)")
     print()
 
-    print("[7/9] 特码号码集合预测与回测(每集合8~10颗)...")
+    print("[7/10] 特码号码集合预测与回测(每集合8~10颗)...")
     pools = predict_special_pools(records, llm_result=llm_result, backtest_n=args.backtest)
     for i, p in enumerate(pools):
         star = "  ★推荐" if i == 0 else ""
@@ -120,7 +122,7 @@ def main():
     print("  (命中=真实特码落在集合内; 随机基线=集合大小/49)")
     print()
 
-    print("[8/9] 特码大集合预测(20颗)与回测...")
+    print("[8/10] 特码大集合预测(20颗)与回测...")
     wide = predict_wide_pool(records, llm_result=llm_result, backtest_n=args.backtest)
     nums = ",".join(f"{n:02d}" for n in wide.numbers)
     print(f"  ★大集合 ({len(wide.numbers)}颗): {nums}")
@@ -130,7 +132,16 @@ def main():
     print("  (命中=真实特码落在 20 颗内; 随机基线=20/49≈40.8%)")
     print()
 
-    print("[9/9] 完成")
+    print("[9/10] 特码三生肖预测(单组)与回测...")
+    zp = predict_zodiac_pool(records, llm_result=llm_result, backtest_n=args.backtest)
+    print(f"  ★三生肖: {'、'.join(zp.zodiacs)}")
+    print(f"      策略: {zp.strategy}")
+    print(f"      回测: 命中率={zp.hit_rate:.1%}  基线={zp.baseline:.1%}  lift={zp.lift:+.1%}"
+          f"  标准误={zp.std_error:.1%}  稳定性={zp.stability:.2f}")
+    print("  (命中=真实特码生肖落在 3 个内; 随机基线=3/12=25%)")
+    print()
+
+    print("[10/10] 完成")
     print("-" * 70)
     print(DISCLAIMER)
 
