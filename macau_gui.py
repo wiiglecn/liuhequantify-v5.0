@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """澳门六合彩分析与预测 - 图形界面版(tkinter)
-把所有预测信息排版布局在标签页界面上。"""
+科技感深色主题 + 淡红色主色调, 卡片式排版。"""
 import os
 import sys
 import threading
@@ -24,9 +24,25 @@ from predictor import predict_all, predict_special_groups
 from dimensions import predict_dimensions, predict_zodiac_pool
 from special_pool import predict_special_pools, predict_wide_pool
 
+# ======================== 主题配色 ========================
+BG_MAIN = "#14141c"        # 主背景(深)
+BG_CARD = "#1e1e2a"        # 卡片背景
+BG_CARD2 = "#262635"       # 卡片次级
+BORDER = "#3a2a33"         # 边框(带红调)
+PRIMARY = "#e57373"        # 淡红主色
+PRIMARY_D = "#c05050"      # 深红(按钮按下/边线)
+PRIMARY_L = "#f3b4b4"      # 浅红(号码/键名)
+ACCENT = "#ff6b6b"         # 霓虹红(高亮/推荐)
+TEXT = "#ecedf2"           # 主文字
+MUTED = "#8a8a9c"          # 次要文字
+OK = "#7ee787"             # 正向(lift>0)
+WARN = "#f5a623"           # 警示
+
 FONT = ("Microsoft YaHei UI", 10)
+FONT_TITLE = ("Microsoft YaHei UI", 17, "bold")
 FONT_H = ("Microsoft YaHei UI", 12, "bold")
-FONT_MONO = ("Consolas", 10)
+FONT_MONO = ("Consolas", 11)
+FONT_MONO_B = ("Consolas", 11, "bold")
 
 DISCLAIMER = (
     "科学提示: 彩票开奖本质为独立随机事件, 任何模型的真实命中率理论上均接近随机概率\n"
@@ -45,55 +61,129 @@ class App:
         self.results = None
         self.worker = None
         root.title("澳门六合彩开奖记录分析与预测")
-        root.geometry("980x680")
+        root.geometry("1020x720")
+        root.configure(bg=BG_MAIN)
+        self._setup_style()
         self._build_ui()
         self._poll()
 
+    # ---------------- 样式 ----------------
+    def _setup_style(self):
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except Exception:
+            pass
+        style.configure("TNotebook", background=BG_MAIN, borderwidth=0, tabmargins=(6, 6, 6, 0))
+        style.configure("TNotebook.Tab", background=BG_MAIN, foreground=MUTED,
+                        padding=(18, 8), font=FONT, borderwidth=0)
+        style.map("TNotebook.Tab",
+                  background=[("selected", BG_CARD)],
+                  foreground=[("selected", PRIMARY)],
+                  expand=[("selected", (1, 1, 1, 0))])
+        style.configure("TCheckbutton", background=BG_MAIN, foreground=TEXT, font=FONT)
+        style.map("TCheckbutton", background=[("active", BG_MAIN)])
+        style.configure("TSpinbox", fieldbackground=BG_CARD2, foreground=TEXT,
+                        background=BG_MAIN, arrowcolor=PRIMARY, bordercolor=BORDER,
+                        lightcolor=BORDER, darkcolor=BORDER, insertcolor=PRIMARY)
+        style.configure("Horizontal.TProgressbar", background=PRIMARY,
+                        troughcolor=BG_CARD2, borderwidth=0, lightcolor=PRIMARY,
+                        darkcolor=PRIMARY)
+
     # ---------------- UI 构建 ----------------
     def _build_ui(self):
-        bar = ttk.Frame(self.root)
-        bar.pack(fill="x", padx=8, pady=6)
+        # 顶部标题区
+        header = tk.Frame(self.root, bg=BG_MAIN)
+        header.pack(fill="x", padx=18, pady=(14, 4))
+        tk.Label(header, text="澳门六合彩 · 开奖记录分析与预测", fg=PRIMARY,
+                 bg=BG_MAIN, font=FONT_TITLE).pack(side="left")
+        tk.Label(header, text="  统计模型 + 大模型反推理", fg=MUTED,
+                 bg=BG_MAIN, font=FONT).pack(side="left", padx=4)
+        accent = tk.Frame(self.root, bg=PRIMARY_D, height=2)
+        accent.pack(fill="x", padx=18, pady=(0, 8))
 
-        self.run_btn = ttk.Button(bar, text="开始分析", command=self.start)
+        # 控制栏
+        bar = tk.Frame(self.root, bg=BG_MAIN)
+        bar.pack(fill="x", padx=18, pady=4)
+
+        self.run_btn = tk.Button(bar, text="▶  开始分析", command=self.start,
+                                 bg=PRIMARY, fg="#1a1a22", activebackground=ACCENT,
+                                 activeforeground="#1a1a22", relief="flat", bd=0,
+                                 font=("Microsoft YaHei UI", 10, "bold"),
+                                 padx=16, pady=5, cursor="hand2")
         self.run_btn.pack(side="left")
+        self._add_hover(self.run_btn, PRIMARY, ACCENT)
 
-        ttk.Label(bar, text="  回测期数:").pack(side="left")
+        tk.Label(bar, text="  回测期数", bg=BG_MAIN, fg=MUTED, font=FONT).pack(side="left", padx=(14, 4))
         self.bt_var = tk.IntVar(value=30)
-        ttk.Spinbox(bar, from_=5, to=100, textvariable=self.bt_var,
-                    width=5).pack(side="left", padx=4)
+        ttk.Spinbox(bar, from_=5, to=100, textvariable=self.bt_var, width=5,
+                    font=FONT).pack(side="left")
 
         self.refresh_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(bar, text="强制刷新数据", variable=self.refresh_var).pack(side="left", padx=8)
+        ttk.Checkbutton(bar, text="强制刷新数据", variable=self.refresh_var).pack(side="left", padx=12)
 
-        self.prog = ttk.Progressbar(bar, mode="indeterminate", length=120)
-        self.prog.pack(side="left", padx=8)
+        self.prog = ttk.Progressbar(bar, mode="indeterminate", length=130, maximum=100)
+        self.prog.pack(side="left", padx=12)
 
-        self.status = ttk.Label(bar, text="就绪。点击「开始分析」", font=FONT)
+        self.status = tk.Label(bar, text="● 就绪。点击「开始分析」", bg=BG_MAIN,
+                               fg=MUTED, font=FONT)
         self.status.pack(side="left", padx=10)
 
+        # 标签页
         self.nb = ttk.Notebook(self.root)
-        self.nb.pack(fill="both", expand=True, padx=8, pady=4)
+        self.nb.pack(fill="both", expand=True, padx=12, pady=(6, 12))
 
         self.tabs = {}
         titles = [("overview", "总览"), ("full", "三组完整预测"),
                   ("single", "五组单颗特码"), ("dims", "六维度属性"),
                   ("pools", "号码集合"), ("zodiac", "三生肖")]
         for key, title in titles:
-            txt = scrolledtext.ScrolledText(self.nb, wrap="word", font=FONT, spacing1=2)
-            txt.tag_config("h", font=FONT_H, foreground="#1a4f8b")
-            txt.tag_config("star", foreground="#c0392b", font=("Microsoft YaHei UI", 10, "bold"))
-            txt.tag_config("muted", foreground="#777")
-            txt.tag_config("ok", foreground="#1e8449")
-            txt.tag_config("mono", font=FONT_MONO)
-            txt.configure(state="disabled")
-            self.nb.add(txt, text=title)
+            page = tk.Frame(self.nb, bg=BG_MAIN)
+            self.nb.add(page, text=title)
+            txt = self._make_card(page)
             self.tabs[key] = txt
 
-        self._fill("overview", [("澳门六合彩开奖记录分析与预测软件\n", "h"),
-                                ("\n点击上方「开始分析」按钮开始。\n", None),
-                                ("\n说明: 程序会自动抓取 macaujc.com 历史开奖记录,\n", None),
-                                ("采用统计模型 + 大模型反推理, 给出多维度预测。\n\n", None),
+        self._fill("overview", [("澳门六合彩开奖记录分析与预测\n", "h"),
+                                ("\n点击右上方「▶ 开始分析」启动。\n", None),
+                                ("程序自动抓取 macaujc.com 历史开奖, 采用统计模型 + 大模型反推理,\n", None),
+                                ("给出三组完整预测、五组特码、六维度属性、号码集合、三生肖等多维度预测。\n\n", None),
                                 (DISCLAIMER, "muted")])
+
+    def _make_card(self, parent):
+        """带边框的卡片文本区。"""
+        wrap = tk.Frame(parent, bg=BORDER)
+        wrap.pack(fill="both", expand=True, padx=2, pady=2)
+        txt = scrolledtext.ScrolledText(wrap, wrap="word", font=FONT, spacing1=2, spacing2=2,
+                                        bg=BG_CARD, fg=TEXT, relief="flat", bd=0,
+                                        padx=16, pady=12, highlightthickness=0,
+                                        insertbackground=PRIMARY, selectbackground=PRIMARY_D)
+        txt.pack(fill="both", expand=True, padx=1, pady=1)
+        # 文本标签样式
+        txt.tag_config("h", font=FONT_H, foreground=PRIMARY, spacing3=4)
+        txt.tag_config("star", foreground=ACCENT, font=("Microsoft YaHei UI", 10, "bold"))
+        txt.tag_config("muted", foreground=MUTED)
+        txt.tag_config("ok", foreground=OK)
+        txt.tag_config("warn", foreground=WARN)
+        txt.tag_config("mono", font=FONT_MONO)
+        txt.tag_config("key", foreground=PRIMARY_L)
+        txt.tag_config("chip", font=FONT_MONO_B, background=PRIMARY, foreground="#1a1a22")
+        txt.tag_config("chipm", font=FONT_MONO_B, background=BG_CARD2, foreground=PRIMARY_L)
+        # 滚动条配色
+        try:
+            txt.vbar.config(bg=BG_CARD2, troughcolor=BG_CARD,
+                            activebackground=PRIMARY_D, highlightthickness=0, bd=0)
+        except Exception:
+            pass
+        txt.configure(state="disabled")
+        return txt
+
+    def _add_hover(self, btn, normal, hover):
+        def enter(e):
+            btn.config(bg=hover)
+        def leave(e):
+            btn.config(bg=normal)
+        btn.bind("<Enter>", enter)
+        btn.bind("<Leave>", leave)
 
     # ---------------- 运行 ----------------
     def start(self):
@@ -101,7 +191,7 @@ class App:
             return
         self.run_btn.config(state="disabled")
         self.prog.start(12)
-        self.status.config(text="分析中...")
+        self._set_status("运行中...", PRIMARY)
         self.worker = threading.Thread(target=self._work, daemon=True)
         self.worker.start()
 
@@ -150,23 +240,26 @@ class App:
     def _msg(self, text):
         self.queue.put(("msg", text))
 
+    def _set_status(self, text, color=MUTED):
+        self.status.config(text="● " + text, fg=color)
+
     def _poll(self):
         try:
             while True:
                 kind, payload = self.queue.get_nowait()
                 if kind == "msg":
-                    self.status.config(text=payload)
+                    self._set_status(payload, PRIMARY)
                 elif kind == "error":
                     self.prog.stop()
                     self.run_btn.config(state="normal")
-                    self.status.config(text="错误: " + payload)
+                    self._set_status("错误", ACCENT)
                     messagebox.showerror("错误", payload)
                 elif kind == "done":
                     self.results = payload
                     self._render_all()
                     self.prog.stop()
                     self.run_btn.config(state="normal")
-                    self.status.config(text="完成。")
+                    self._set_status("完成", OK)
                     self.nb.select(self.tabs["overview"])
         except queue.Empty:
             pass
@@ -174,7 +267,6 @@ class App:
 
     # ---------------- 渲染 ----------------
     def _fill(self, key, segments):
-        """segments: list of (text, tag|None)"""
         t = self.tabs[key]
         t.configure(state="normal")
         t.delete("1.0", "end")
@@ -186,6 +278,13 @@ class App:
         t.configure(state="disabled")
         t.see("1.0")
 
+    def _lift_tag(self, lift):
+        if lift > 1e-9:
+            return "ok"
+        if lift < -1e-9:
+            return "warn"
+        return "muted"
+
     def _render_all(self):
         r = self.results
         recs = r["records"]
@@ -193,82 +292,122 @@ class App:
         last = recs[-1]
 
         # ---- 总览 ----
-        seg = [("数据概览\n", "h"),
-               (f"期数: {len(recs)}    时间范围: {recs[0].open_time} ~ {last.open_time}\n", None),
-               (f"最近一期: 期号 {last.expect}  平码 {_fmt_nums(last.regular)}  特码 {last.special:02d}\n\n", None),
-               ("反推理候选数学模型(拟合度 0-1, 越高越可能解释该序列)\n", "h")]
+        seg = [("数据概览\n", "h")]
+        seg.append((f"期数 ", None)); seg.append((f"{len(recs)}", "key"))
+        seg.append((f"     时间范围 ", None))
+        seg.append((f"{recs[0].open_time} ~ {last.open_time}\n", "key"))
+        seg.append(("最近一期: 期号 ", None))
+        seg.append((f"{last.expect}", "key"))
+        seg.append(("  平码 ", None))
+        seg.append((f" {_fmt_nums(last.regular)} ", "chipm"))
+        seg.append(("  特码 ", None))
+        seg.append((f" {last.special:02d} ", "chip"))
+        seg.append(("\n\n", None))
+        seg.append(("反推理候选数学模型\n", "h"))
+        seg.append(("(拟合度 0–1, 越高越可能解释该序列)\n\n", "muted"))
         for name, score, detail in report["models"]:
-            seg.append((f"  {name}: {score:.3f}  ({detail})\n", None))
+            seg.append((f"  {name}  ", None))
+            seg.append((f"{score:.3f}", "key"))
+            seg.append((f"   {detail}\n", "muted"))
         llm = r["llm"]
         seg.append(("\n大模型反推理\n", "h"))
         if llm:
-            seg.append((f"  模型清单: {', '.join(llm.inferred_models) or '(未解析)'}\n", None))
-            seg.append((f"  推理: {llm.reasoning[:200]}\n", "muted"))
+            seg.append(("  模型清单: ", None))
+            seg.append((f"{', '.join(llm.inferred_models) or '(未解析)'}\n", "key"))
+            seg.append((f"  推理: {llm.reasoning[:240]}\n", "muted"))
         else:
             seg.append(("  未启用(编辑 config.ini 填入 api_key)\n", "muted"))
-        seg.append(("\n" + DISCLAIMER + "\n", "muted"))
+        seg.append(("\n" + DISCLAIMER, "muted"))
         self._fill("overview", seg)
 
         # ---- 三组完整预测 ----
-        seg = [("三组完整预测(6平码 + 1特码)\n", "h"),
+        seg = [("三组完整预测  (6平码 + 1特码)\n", "h"),
                ("按回测综合命中率排序, ★ 为推荐组\n\n", "muted")]
         for i, g in enumerate(r["groups"]):
-            star = " ★推荐" if i == 0 else ""
-            seg.append((f"{g.name}组{star}: 平码 {_fmt_nums(g.regular)}  特码 {g.special:02d}\n",
-                        "star" if i == 0 else None))
+            star = " ★ 推荐" if i == 0 else ""
+            seg.append((f"{g.name}组{star}:  平码 ", "star" if i == 0 else None))
+            seg.append((f" {_fmt_nums(g.regular)} ", "chipm" if i else "chipm"))
+            seg.append(("  特码 ", "star" if i == 0 else None))
+            seg.append((f" {g.special:02d} ", "chip"))
+            seg.append(("\n", None))
             seg.append((f"  策略: {g.strategy}\n", "muted"))
-            seg.append((f"  回测: 特码命中率={g.backtest_special_hit:.1%}"
-                        f"  平均平码命中={g.backtest_regular_hits:.2f}/6\n\n", None))
+            seg.append((f"  回测: 特码命中率 ", None))
+            seg.append((f"{g.backtest_special_hit:.1%}", "key"))
+            seg.append((f"   平均平码命中 ", None))
+            seg.append((f"{g.backtest_regular_hits:.2f}/6\n\n", "key"))
         self._fill("full", seg)
 
         # ---- 五组单颗特码 ----
-        seg = [("五组单颗特码预测(随机基线 = 1/49 ≈ 2.0%)\n", "h"),
-               ("按回测命中率排序, ★ 为推荐组\n\n", "muted")]
+        seg = [("五组单颗特码预测\n", "h"),
+               ("随机基线 = 1/49 ≈ ", "muted"), ("2.0%", "key"),
+               ("    按回测命中率排序, ★ 为推荐组\n\n", "muted")]
         for i, g in enumerate(r["sp"]):
-            star = " ★推荐" if i == 0 else ""
-            seg.append((f"特码{g.name}组{star}: 特码 {g.special:02d}\n",
-                        "star" if i == 0 else None))
+            star = " ★ 推荐" if i == 0 else ""
+            seg.append((f"特码{g.name}组{star}:  特码 ", "star" if i == 0 else None))
+            seg.append((f" {g.special:02d} ", "chip"))
+            seg.append(("\n", None))
             seg.append((f"  策略: {g.strategy}\n", "muted"))
-            seg.append((f"  回测: 命中率={g.backtest_hit:.1%}  lift={g.lift:+.1%}"
-                        f"  标准误={g.std_error:.1%}  稳定性={g.stability:.2f}\n\n", None))
+            seg.append((f"  回测: 命中率 ", None))
+            seg.append((f"{g.backtest_hit:.1%}", "key"))
+            seg.append((f"   lift ", None))
+            seg.append((f"{g.lift:+.1%}", self._lift_tag(g.lift)))
+            seg.append((f"   标准误 {g.std_error:.1%}   稳定性 {g.stability:.2f}\n\n", "muted"))
         self._fill("single", seg)
 
         # ---- 六维度属性 ----
-        seg = [("六维度特码属性预测(频率+马尔可夫+趋势 融合)\n", "h"),
-               ("lift>0 表示优于随机基线; 稳定性越小越稳\n\n", "muted"),
-               (f"  {'维度':<6}{'预测值':<8}{'准确率':>8}{'随机基线':>10}{'lift':>8}{'标准误':>8}{'稳定性':>8}\n", "mono")]
+        seg = [("六维度特码属性预测\n", "h"),
+               ("频率 + 马尔可夫 + 趋势 融合    lift>0 优于随机基线\n\n", "muted"),
+               (f"  {'维度':<6}{'预测值':<8}{'准确率':>8}{'随机基线':>10}{'lift':>9}{'标准误':>8}{'稳定性':>8}\n", "mono")]
         for d in r["dims"]:
             seg.append((f"  {d.name:<6}{d.value:<8}{d.accuracy:>8.1%}{d.baseline:>10.1%}"
-                        f"{d.lift:>+8.1%}{d.std_error:>8.1%}{d.stability:>8.2f}\n", "mono"))
+                        f"{d.lift:>+9.1%}{d.std_error:>8.1%}{d.stability:>8.2f}\n", "mono"))
         self._fill("dims", seg)
 
         # ---- 号码集合 ----
-        seg = [("特码号码集合预测(每集合 8~10 颗, 命中=真实特码落在集合内)\n", "h"),
-               ("按回测命中率排序, ★ 为推荐组\n\n", "muted")]
+        seg = [("特码号码集合预测  (每集合 8~10 颗)\n", "h"),
+               ("命中 = 真实特码落在集合内    按回测命中率排序, ★ 为推荐组\n\n", "muted")]
         for i, p in enumerate(r["pools"]):
-            star = " ★推荐" if i == 0 else ""
-            seg.append((f"集合{p.name}组{star} ({len(p.numbers)}颗): {_fmt_nums(p.numbers)}\n",
-                        "star" if i == 0 else None))
+            star = " ★ 推荐" if i == 0 else ""
+            seg.append((f"集合{p.name}组{star} ({len(p.numbers)}颗):  ", "star" if i == 0 else None))
+            seg.append((f" {_fmt_nums(p.numbers)} ", "chipm"))
+            seg.append(("\n", None))
             seg.append((f"  策略: {p.strategy}\n", "muted"))
-            seg.append((f"  回测: 命中率={p.hit_rate:.1%}  基线={p.baseline:.1%}"
-                        f"  lift={p.lift:+.1%}  稳定性={p.stability:.2f}\n\n", None))
+            seg.append((f"  回测: 命中率 ", None))
+            seg.append((f"{p.hit_rate:.1%}", "key"))
+            seg.append((f"   基线 {p.baseline:.1%}   lift ", None))
+            seg.append((f"{p.lift:+.1%}", self._lift_tag(p.lift)))
+            seg.append((f"   稳定性 {p.stability:.2f}\n\n", "muted"))
         wide = r["wide"]
-        seg.append(("20 颗特码大集合(单组, 多信号融合)\n", "h"))
-        seg.append((f"  ★大集合 ({len(wide.numbers)}颗): {_fmt_nums(wide.numbers)}\n", "star"))
+        seg.append(("20 颗特码大集合  (单组 · 多信号融合)\n", "h"))
+        seg.append((f"  ★ 大集合 ({len(wide.numbers)}颗):  ", "star"))
+        seg.append((f" {_fmt_nums(wide.numbers)} ", "chip"))
+        seg.append(("\n", None))
         seg.append((f"  策略: {wide.strategy}\n", "muted"))
-        seg.append((f"  回测: 命中率={wide.hit_rate:.1%}  基线={wide.baseline:.1%}"
-                    f"  lift={wide.lift:+.1%}  稳定性={wide.stability:.2f}\n", None))
+        seg.append((f"  回测: 命中率 ", None))
+        seg.append((f"{wide.hit_rate:.1%}", "key"))
+        seg.append((f"   基线 {wide.baseline:.1%}   lift ", None))
+        seg.append((f"{wide.lift:+.1%}", self._lift_tag(wide.lift)))
+        seg.append((f"   稳定性 {wide.stability:.2f}\n", None))
         self._fill("pools", seg)
 
         # ---- 三生肖 ----
         zp = r["zp"]
-        seg = [("特码三生肖预测(单组, 命中=真实特码生肖落在 3 个内)\n", "h"),
-               ("随机基线 = 3/12 = 25%\n\n", "muted"),
-               (f"  ★三生肖: {'、'.join(zp.zodiacs)}\n", "star"),
-               (f"  策略: {zp.strategy}\n", "muted"),
-               (f"  回测: 命中率={zp.hit_rate:.1%}  基线={zp.baseline:.1%}"
-                 f"  lift={zp.lift:+.1%}  标准误={zp.std_error:.1%}  稳定性={zp.stability:.2f}\n\n", None),
-               (DISCLAIMER + "\n", "muted")]
+        seg = [("特码三生肖预测  (单组)\n", "h"),
+               ("命中 = 真实特码生肖落在 3 个内    随机基线 = 3/12 = ", "muted"),
+               ("25%\n\n", "key")]
+        seg.append(("  ★ 三生肖:  ", "star"))
+        for i, z in enumerate(zp.zodiacs):
+            seg.append((f" {z} ", "chip"))
+            if i < len(zp.zodiacs) - 1:
+                seg.append(("  ", None))
+        seg.append(("\n", None))
+        seg.append((f"  策略: {zp.strategy}\n", "muted"))
+        seg.append((f"  回测: 命中率 ", None))
+        seg.append((f"{zp.hit_rate:.1%}", "key"))
+        seg.append((f"   基线 {zp.baseline:.1%}   lift ", None))
+        seg.append((f"{zp.lift:+.1%}", self._lift_tag(zp.lift)))
+        seg.append((f"   标准误 {zp.std_error:.1%}   稳定性 {zp.stability:.2f}\n\n", None))
+        seg.append((DISCLAIMER, "muted"))
         self._fill("zodiac", seg)
 
 
