@@ -22,6 +22,15 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(cfg["api_key"], "sk-test")
         self.assertEqual(cfg["model"], "deepseek-chat")
 
+    def test_malformed_config_returns_none(self):
+        # 含非法行(裸中文, 非注释非键值)时应降级返回 None, 不抛异常
+        d = tempfile.mkdtemp()
+        path = os.path.join(d, "config.ini")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("[llm]\nbase_url=https://api.deepseek.com\nmodel=deepseek-chat\napi_key=sk-test\n优\n")
+        cfg = load_config(path)
+        self.assertIsNone(cfg)
+
 
 class TestParseAndPrompt(unittest.TestCase):
     def test_parse_response_extracts_models_and_numbers(self):

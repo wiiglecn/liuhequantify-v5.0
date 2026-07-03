@@ -1,6 +1,6 @@
 [llm]
 # OpenAI 兼容接口配置(DeepSeek / 通义 / Moonshot / OpenAI 等)
-# 填入 api_key 后即可启用大模型反推理; 留空则自动降级为纯统计模型。
+# 复制本文件为 config.ini 并填入 api_key 后即可启用大模型反推理; 留空则自动降级为纯统计模型。
 base_url = https://api.deepseek.com
 api_key =
 model = deepseek-chat

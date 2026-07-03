@@ -93,11 +93,16 @@ def parse_llm_response(text: str) -> LLMResult:
 
 
 def load_config(path: str = DEFAULT_CONFIG):
-    """读取 config.ini, 返回 {base_url, api_key, model}; 关键项缺失返回 None。"""
+    """读取 config.ini, 返回 {base_url, api_key, model}; 关键项缺失或解析失败返回 None。"""
     if not os.path.exists(path):
         return None
     cp = configparser.ConfigParser()
-    cp.read(path, encoding="utf-8")
+    try:
+        cp.read(path, encoding="utf-8")
+    except (configparser.Error, UnicodeDecodeError) as e:
+        # 配置文件语法错误(如多余的非注释行)时降级, 不让程序崩溃
+        print(f"  ! config.ini 解析失败, 跳过大模型: {e}")
+        return None
     if "llm" not in cp:
         return None
     base_url = cp["llm"].get("base_url", "").strip()
