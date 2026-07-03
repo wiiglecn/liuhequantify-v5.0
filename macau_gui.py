@@ -25,7 +25,7 @@ from dimensions import predict_dimensions, predict_zodiac_pool
 from special_pool import predict_special_pools, predict_wide_pool
 
 # ======================== 主题配色 (白底清爽 + 淡红主色) ========================
-BG_MAIN = "#f5f6f8"        # 页面背景(浅灰白)
+BG_MAIN = "#ffffff"        # 页面背景(白)
 BG_CARD = "#ffffff"        # 卡片背景(白)
 BG_CARD2 = "#f0f2f5"       # 卡片次级/表头底
 BORDER = "#f0d4d4"         # 卡片边框(淡红)
@@ -37,7 +37,7 @@ PRIMARY_L = "#f6b4b4"      # 浅红
 ACCENT = "#e84545"         # 鲜红(高亮/推荐)
 TEXT = "#2c2f36"           # 主文字(深灰)
 TEXT2 = "#5a606b"          # 次文字
-MUTED = "#ffffff"          # 弱化文字(按要求改为白色)
+MUTED = "#000000"          # 弱化文字(按要求改为黑色)
 OK = "#2ea043"             # 正向(lift>0)
 WARN = "#d68910"           # 警示
 
