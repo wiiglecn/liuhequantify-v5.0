@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """澳门六合彩分析与预测 - 图形界面版(tkinter)
-科技感深色主题 + 淡红主色调 + 3D 立体号码球 + 卡片流排版。"""
+白底清爽主题 + 淡红主色调 + 3D 立体号码球 + 卡片流排版。"""
 import os
 import sys
 import threading
@@ -24,20 +24,22 @@ from predictor import predict_all, predict_special_groups
 from dimensions import predict_dimensions, predict_zodiac_pool
 from special_pool import predict_special_pools, predict_wide_pool
 
-# ======================== 主题配色 ========================
-BG_MAIN = "#12121a"
-BG_CARD = "#1e1e2b"
-BG_CARD2 = "#262633"
-BORDER = "#3a2a33"
-SHADOW = "#08080d"
-PRIMARY = "#e57373"
-PRIMARY_D = "#b83d3d"
-PRIMARY_L = "#f6b4b4"
-ACCENT = "#ff6b6b"
-TEXT = "#ecedf2"
-MUTED = "#8a8a9c"
-OK = "#7ee787"
-WARN = "#f5a623"
+# ======================== 主题配色 (白底清爽 + 淡红主色) ========================
+BG_MAIN = "#f5f6f8"        # 页面背景(浅灰白)
+BG_CARD = "#ffffff"        # 卡片背景(白)
+BG_CARD2 = "#f0f2f5"       # 卡片次级/表头底
+BORDER = "#f0d4d4"         # 卡片边框(淡红)
+BORDER_G = "#e6e8eb"       # 通用边框(灰)
+SHADOW = "#d8dce2"         # 卡片投影(灰)
+PRIMARY = "#e57373"        # 淡红主色
+PRIMARY_D = "#c05050"      # 深红
+PRIMARY_L = "#f6b4b4"      # 浅红
+ACCENT = "#e84545"         # 鲜红(高亮/推荐)
+TEXT = "#2c2f36"           # 主文字(深灰)
+TEXT2 = "#5a606b"          # 次文字
+MUTED = "#ffffff"          # 弱化文字(按要求改为白色)
+OK = "#2ea043"             # 正向(lift>0)
+WARN = "#d68910"           # 警示
 
 FONT = ("Microsoft YaHei UI", 10)
 FONT_SM = ("Microsoft YaHei UI", 9)
@@ -190,8 +192,8 @@ class App:
         bar = tk.Frame(self.root, bg=BG_MAIN)
         bar.pack(fill="x", padx=20, pady=4)
         self.run_btn = tk.Button(bar, text="▶  开始分析", command=self.start,
-                                 bg=ACCENT, fg="#1a1a22", activebackground=PRIMARY,
-                                 activeforeground="#1a1a22", relief="flat", bd=0,
+                                 bg=ACCENT, fg="#ffffff", activebackground=PRIMARY,
+                                 activeforeground="#ffffff", relief="flat", bd=0,
                                  font=("Microsoft YaHei UI", 10, "bold"),
                                  padx=18, pady=6, cursor="hand2")
         self.run_btn.pack(side="left")

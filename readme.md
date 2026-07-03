@@ -15,6 +15,16 @@
    3.最好能反推理出其可能使到的数学模型，并罗列出来。
    4.使用python 语言实现。 
 
+  1. CustomTkinter (推荐)
+     基于 tkinter 封装，圆角控件 + 深色主题，现代感强。保留现有 Canvas 球和架构，迁移风险最低。pip 一行装，无系统依赖。
+❯ 2. ttkbootstrap
+     Bootstrap 风格的扁平 ttk 主题，也是 tkinter 系，迁移容易。视觉偏扁平清爽，圆角/质感不如 CustomTkinter。
+  3. PySide6 (Fluent 风格)
+     Qt 原生控件 + Fluent Win11 风格，最精致最流畅。但需整文件重写、安装约 100MB+、API 变化大，工期最长。
+  4. Flet
+     Flutter 引擎渲染，现代 Web 风观感。但要引入异步模型 + Flutter 运行时，依赖最重，范式与现架构差异大。
+
+
 ● 测试完成，所有BUG已修复。最终运行结果：
 
   数据解析:

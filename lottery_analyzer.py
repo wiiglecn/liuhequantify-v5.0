@@ -655,7 +655,7 @@ def print_high_accuracy_nodes(results):
 
 def main():
     print("\n" + "╔" + "═" * 68 + "╗")
-    print("║" + "六合彩网站预测内容准确率分析工具".center(56) + "║")
+    print("║" + "六合彩网站预测内容准确率分析工具".center(50) + "║")
     print("║" + f"运行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}".center(60) + "║")
     print("╚" + "═" * 68 + "╝")
 
