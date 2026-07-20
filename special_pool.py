@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from analysis import build_report
 from backtest_utils import backtest_series, rolling_stability
+from dimensions import build_zodiac_map, _zodiac_six_scores
 
 if sys.platform == "win32":
     try:
@@ -174,8 +175,41 @@ def predict_special_pools(records, llm_result=None, backtest_n: int = 30,
 
 # ======================== 20 颗大集合(单组) ========================
 
-def _wide_score(records, report, llm_result):
-    """融合多信号为每个号码打分, 用于排序取 20 颗。"""
+def _zodiac_bonus(records, zodiac_map):
+    """三/四/六肖命中给号码加分(与 dimensions._zodiac_six_scores 同口径, 纯统计可回测)。
+
+    三肖⊆四肖⊆六肖, 命中越窄的集合越该进大集合:
+      生肖∈三肖 -> +3.0; ∈四肖(非三) -> +2.0; ∈六肖(非四) -> +1.0; 其余 0。
+    一次打分切片得 top3/4/6, 避免重复计算; zodiac_map 为空时返回 {}(信号不贡献)。
+    """
+    if not records or not zodiac_map:
+        return {}
+    scores = _zodiac_six_scores(records, None, zodiac_map, 0.0)  # llm_weight=0 纯统计, 可回测
+    if not scores:
+        return {}
+    ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+    top3 = {z for z, _ in ranked[:3]}
+    top4 = {z for z, _ in ranked[:4]}
+    top6 = {z for z, _ in ranked[:6]}
+    bonus = {}
+    for num, z in zodiac_map.items():
+        if z in top3:
+            bonus[num] = 3.0
+        elif z in top4:
+            bonus[num] = 2.0
+        elif z in top6:
+            bonus[num] = 1.0
+    return bonus
+
+
+def _wide_score(records, report, llm_result, zodiac_map=None):
+    """融合多信号为每个号码打分, 用于排序取 20 颗。
+
+    信号: 1频率 2遗漏 3马尔可夫一阶 4近期趋势 5大模型种子 6三/四/六肖生肖命中。
+    信号6 取自生肖层预测(_zodiac_six_scores, 纯统计), 把高概率生肖的号码倾向性纳入
+    号码集合, 使大集合与三肖/四肖/六肖预测保持一致。zodiac_map 未传时按 records 就地
+    构建(回测每折用 train 自建, 不泄漏未来)。
+    """
     scores = {n: 0.0 for n in range(1, 50)}
 
     # 1. 频率热号(归一化)
@@ -210,6 +244,12 @@ def _wide_score(records, report, llm_result):
         llm_nums = [n for n in llm_result.predicted_set if isinstance(n, int) and 1 <= n <= 49]
         for n in llm_nums:
             scores[n] += 2.0
+
+    # 6. 生肖集合信号(三/四/六肖命中; 纯统计可回测, 与 dimensions._zodiac_six_scores 同口径)
+    if zodiac_map is None:
+        zodiac_map = build_zodiac_map(records) if records else {}
+    for n, b in _zodiac_bonus(records, zodiac_map).items():
+        scores[n] += b
 
     return scores
 
@@ -262,7 +302,7 @@ def predict_wide_pool(records, llm_result=None, backtest_n: int = 30,
     hr, baseline, lift, se, stab = _backtest_wide_pool(records, llm_result, backtest_n, k)
     return WidePool(
         numbers=numbers,
-        strategy="频率+遗漏+马尔可夫+趋势+大模型 多信号融合",
+        strategy="频率+遗漏+马尔可夫+趋势+大模型+三/四/六肖生肖 多信号融合",
         hit_rate=hr, baseline=baseline, lift=lift,
         std_error=se, stability=stab,
     )
