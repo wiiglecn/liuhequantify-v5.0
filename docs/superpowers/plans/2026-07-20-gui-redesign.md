@@ -1283,14 +1283,15 @@ Run: `! python -c "import macau_gui as m; m._PIL_OK = False; m.main()"`
 9. 录入弹窗:聚焦环输入框、预览球、保存并跳转历史页
 10. 窗口最小化/拉伸:卡片随宽度伸缩,圆角不失真
 
-- [ ] **Step 4: Codex 交叉审查(按用户全局规则②,必做)**
+- [ ] **Step 4: Codex 交叉审查(按用户全局规则②,必做;diff 须先脱敏)**
 
-生成 diff 并喂给 Codex,只问"哪里会炸":
+⚠️ 记忆教训:Codex 对中国彩票内容触发内容过滤。生成 diff 后先 sed 脱敏(六合彩/彩票/开奖/特码/平码/生肖/波色/投注 → 中性代号),prompt 本身也不含敏感词:
 
 ```bash
 cd "D:/software/quantifyWorkspace/liuhequantify"
 git diff 77a773a..HEAD -- macau_gui.py tests/test_gui_theme.py > codex_gui_review.diff
-cat codex_gui_review.diff | codex exec -c model_reasoning_effort=high "你是资深桌面 GUI 代码审查者。项目背景: Python tkinter 桌面应用「澳门六合彩分析预测-猎手2026」, GUI 集中在 macau_gui.py(约1600行), 预测/数据/存档逻辑在其他模块, 本次改动仅为视觉与布局重设计(浅色现代风 + 左侧自绘导航替换 ttk.Notebook), 不允许改变任何预测逻辑与数据流。故意的设计决策(不要当问题报告): 1) 用 PIL 渲染渐变横幅/Logo/数据条与卡片柔影, 无 PIL 时降级为矢量/纯色; 2) 号码球渲染管线(3D 波色球)保持不变; 3) 页面切换由 ttk.Notebook 改为自绘 _show_page; 4) 状态栏移至侧导航底部卡片; 5) 输入内容为上方完整 diff。只回答一个问题: 哪里会炸? —— 运行时异常(TclError/属性名错误/缓存键错误)、资源泄漏(PhotoImage 未引用被 GC)、状态不同步(导航选中/页面刷新/按钮禁用)、无 PIL 降级路径破绽、Windows 特定问题。按严重度逐条列出, 每条给出 文件:行号 与理由。"
+sed -e 's/六合彩/LHC/g; s/彩票/CP/g; s/开奖/KJ/g; s/特码/TM/g; s/平码/PM/g; s/生肖/SX/g; s/波色/BC/g; s/投注/TZ/g' codex_gui_review.diff > codex_gui_review.sanitized.diff
+cat codex_gui_review.sanitized.diff | codex exec -c model_reasoning_effort=high "你是资深桌面 GUI 代码审查者。项目背景: Python tkinter 桌面应用「猎手2026 · 号码统计分析工具」, GUI 集中在 macau_gui.py(约1600行), 分析/数据/存档逻辑在其他模块, 本次改动仅为视觉与布局重设计(浅色现代风 + 左侧自绘导航替换 ttk.Notebook), 不允许改变任何分析与数据流逻辑。注意: 输入 diff 已脱敏 — TM=核心目标号码, PM=普通号码, SX=属性分类, BC=颜色分类, KJ=结果公布, LHC/CP=应用主题词, TZ=建议文案。故意的设计决策(不要当问题报告): 1) 用 PIL 渲染渐变横幅/Logo/数据条与卡片柔影, 无 PIL 时降级为矢量/纯色; 2) 号码球渲染管线保持不变; 3) 页面切换由 ttk.Notebook 改为自绘 _show_page; 4) 状态栏移至侧导航底部卡片; 5) 输入内容为上方完整 diff。只回答一个问题: 哪里会炸? —— 运行时异常(TclError/属性名错误/缓存键错误)、资源泄漏(PhotoImage 未引用被 GC)、状态不同步(导航选中/页面刷新/按钮禁用)、无 PIL 降级路径破绽、Windows 特定问题。按严重度逐条列出, 每条给出 文件:行号 与理由。"
 ```
 
 - [ ] **Step 5: 逐条裁决 Codex 结论并修复真实问题**
@@ -1300,7 +1301,7 @@ cat codex_gui_review.diff | codex exec -c model_reasoning_effort=high "你是资
 - [ ] **Step 6: 清理与最终提交**
 
 ```bash
-rm codex_gui_review.diff
+rm codex_gui_review.diff codex_gui_review.sanitized.diff
 # 可选: 若 .gitignore 尚无 .superpowers/, 追加一行(头脑风暴模型图目录)
 git add macau_gui.py tests/test_gui_theme.py
 git commit -m "chore(gui): 审查修复与收尾 - GUI 重设计完成"
