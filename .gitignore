@@ -1,6 +1,7 @@
 # 敏感/本地文件 - 不纳入版本控制
 config.ini
 macau_history.json
+prediction_history.json
 
 # Python 缓存
 __pycache__/
@@ -9,3 +10,10 @@ __pycache__/
 
 # IDE
 .idea/
+
+# 本地工具/过程文件
+.claude/
+.superpowers/
+_ball_preview/
+diag_dims.py
+verification_checklist.md
