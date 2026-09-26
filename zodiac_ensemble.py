@@ -11,6 +11,8 @@
 import math
 import numpy as np
 from collections import Counter
+from core.evaluation_engine import evaluate_ranked_walk_forward
+from core.signal_registry import register_signal
 from dimensions import (
     build_zodiac_map, special_zodiac_of, _SigCtx,
     _signal_freq, _signal_markov, _signal_cross_dim,
@@ -23,7 +25,7 @@ BASE_SIGNALS = [
     ("bayes", _signal_bayes), ("numcount", _signal_numcount),
 ]
 SIGNAL_NAMES = [n for n, _ in BASE_SIGNALS]
-DEFAULT_W = {"freq": 3.0, "markov": 4.0, "cross_dim": 2.0,
+\n# V5.2 unified registry: metadata only; execution remains in this module.\nfor _n, _fn in BASE_SIGNALS:\n    register_signal(f"zodiac.{_n}.v1", "v1", "zodiac", f"zodiac base signal: {_n}", _fn)\nDEFAULT_W = {"freq": 3.0, "markov": 4.0, "cross_dim": 2.0,
              "recent": 2.8, "bayes": 1.5, "numcount": 1.5}
 
 # Stacking 超参(876 期调参定稿)
@@ -173,7 +175,7 @@ def select_active_signals(folds, threshold=0.85):
 _BT_CACHE = {}  # (n_records, backtest_n) -> {k: hits_list}
 
 
-def predict_stacking_zodiacs(records, k, active_signals=None,
+def _rank_current_stacking_zodiacs(records, k, active_signals=None, window=STACK_WINDOW, ne=STACK_N_EST, md=STACK_MAX_DEPTH, lr=STACK_LR):\n    if active_signals is None: active_signals = SIGNAL_NAMES\n    if len(records) < 60:\n        zmap = build_zodiac_map(records)\n        from dimensions import _build_zodiac_six\n        return _build_zodiac_six(records, None, zmap)[:k]\n    n_folds = max(1, len(records) - 10)\n    folds = precompute_folds(records, n_folds)\n    feats, labels = [], []\n    for f in folds:\n        for z in f["all_z"]:\n            feats.append([f["prob"][name].get(z, 0.0) for name in active_signals])\n            labels.append(1 if z == f["actual"] else 0)\n    if len(feats) < 50 or sum(labels) < 3:\n        return _rank_bma(folds, len(folds)-1, active_signals)[:k]\n    try:\n        from sklearn.ensemble import GradientBoostingClassifier\n        clf = GradientBoostingClassifier(n_estimators=ne, max_depth=md, learning_rate=lr, subsample=0.8, random_state=42)\n        clf.fit(feats, labels)\n        zmap = build_zodiac_map(records)\n        prob, all_z = _compute_fold_probs(records, zmap)\n        X = [[prob[name].get(z,0.0) for name in active_signals] for z in all_z]\n        proba = clf.predict_proba(X); pos = list(clf.classes_).index(1) if 1 in clf.classes_ else 0\n        scores = proba[:,pos] if proba.ndim==2 else proba\n        return [z for _,z in sorted(zip(scores,all_z), reverse=True)][:k]\n    except Exception:\n        return _rank_bma(folds, len(folds)-1, active_signals)[:k]\n\n\ndef predict_stacking_zodiacs(records, k, active_signals=None,
                               window=STACK_WINDOW, ne=STACK_N_EST,
                               md=STACK_MAX_DEPTH, lr=STACK_LR):
     """预测下一期 top-k 生肖: 用全部历史训练 GBDT, 预测当前信号特征。
@@ -229,33 +231,7 @@ def predict_stacking_zodiacs(records, k, active_signals=None,
     return ranked[:k]
 
 
-def backtest_stacking(records, backtest_n, active_signals=None,
-                      window=STACK_WINDOW):
-    """walk-forward 回测, 一次返回 3/4/6 的命中数组。
-
-    带 (n_records, backtest_n) 缓存, 避免 pool/quad/six 三次调用重复计算。
-    返回 dict: {3: [0,1,...], 4: [...], 6: [...]}
-    """
-    if active_signals is None:
-        active_signals = SIGNAL_NAMES
-    key = (len(records), backtest_n, tuple(active_signals))
-    if key in _BT_CACHE:
-        return _BT_CACHE[key]
-    n_clamped = max(1, min(backtest_n, len(records) - 10))
-    total_folds = max(n_clamped + window, len(records) - 10)
-    folds = precompute_folds(records, total_folds)
-    hits = {3: [], 4: [], 6: []}
-    start_idx = len(folds) - n_clamped
-    for i in range(start_idx, len(folds)):
-        rank = _rank_stacking(folds, i, active_signals, window)
-        actual = folds[i]["actual"]
-        pool = set(rank)
-        for kk in (3, 4, 6):
-            hits[kk].append(1 if actual in set(rank[:kk]) else 0)
-    _BT_CACHE[key] = hits
-    return hits
-
-def clear_cache():
+def backtest_stacking(records, backtest_n, active_signals=None, window=STACK_WINDOW):\n    """V5.2 strict OOS evaluation; every fold rebuilds the predictor from its training prefix."""\n    if active_signals is None: active_signals = SIGNAL_NAMES\n    key = (len(records), backtest_n, tuple(active_signals), window, "oos-v52")\n    if key in _BT_CACHE: return _BT_CACHE[key]\n    candidates = sorted(set(build_zodiac_map(records).values()))\n    n_test = max(1, min(backtest_n, len(records)-10))\n    def ranker(train, cands):\n        return _rank_current_stacking_zodiacs(train, 6, active_signals, window)\n    report = evaluate_ranked_walk_forward(records, candidates, special_zodiac_of, ranker, initial_train=len(records)-n_test, test_size=n_test, top_k=(3,4,6))\n    hits = {k: [f.hit_at_k[k] for f in report.folds] for k in (3,4,6)}\n    _BT_CACHE[key] = hits\n    return hits\n\ndef clear_cache():
     _BT_CACHE.clear()
 
 
