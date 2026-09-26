@@ -17,3 +17,7 @@ from .regime_detection import *
 from .adaptive_ensemble import *
 
 from .v57_meta_policy import *
+
+from .pair_signal import *
+from .set_prediction import *
+from .k_specific_policy import *
