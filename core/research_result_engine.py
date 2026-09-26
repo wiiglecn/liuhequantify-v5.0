@@ -59,7 +59,7 @@ def signal_outer_report(rows_by_signal, candidates, top_k=(1,3,6)):
     return out
 
 def build_result_report(layer_result, outer_rows=None, periods=None, signal_outer_rows=None,
-                        alpha=0.05, top_k=(1,3,6)):
+                        pvalues=None, alpha=0.05, top_k=(1,3,6)):
     outer_rows=list(outer_rows or [])
     report={"engine_version":"V5.4.3","layer":layer_result.get("layer"),
             "outer":dict(layer_result.get("outer",{})),
@@ -78,7 +78,6 @@ def build_result_report(layer_result, outer_rows=None, periods=None, signal_oute
         report["stability"]=stability_by_period(outer_rows,periods,top_k=top_k)
     if signal_outer_rows:
         report["signals"]=signal_outer_report(signal_outer_rows,[],top_k=top_k)
-        p={name:1.0 for name in signal_outer_rows}
-        # If callers provide explicit p-values, pass them through instead.
-        report["multiple_testing"]=multiple_testing_from_pvalues(p,alpha=alpha)
+    if pvalues:
+        report["multiple_testing"]=multiple_testing_from_pvalues(pvalues,alpha=alpha)
     return report
