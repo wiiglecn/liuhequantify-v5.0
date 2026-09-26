@@ -73,10 +73,10 @@ def evaluate_layer(name,folds,signals,candidates,target_ks,args):
             "outer":om,"outer_n":len(outer),
             "outer_baseline":base,
             "outer_p_value":binomial_two_sided_pvalue(hits,len(outer),base),
-            "outer_ci":{m:bootstrap_metric_ci(outer,m,rounds=args.bootstrap_rounds)
+            "outer_ci":{m:bootstrap_metric_ci(outer,m,rounds=args.bootstrap_rounds,top_k=(k,))
                         for m in ("hit_at_"+str(k),"logloss","brier","ece","information_gain")},
             "final_holdout":hm,"holdout_n":len(hold),
-            "final_holdout_ci":{m:bootstrap_metric_ci(hold,m,rounds=args.bootstrap_rounds)
+            "final_holdout_ci":{m:bootstrap_metric_ci(hold,m,rounds=args.bootstrap_rounds,top_k=(k,))
                                 for m in ("hit_at_"+str(k),"logloss","brier","ece","information_gain")},
             "final_policy":res["final_policy"][k],
             "policy_path":res["policy_path"][k]
