@@ -277,7 +277,20 @@ def _wide_linear_scores(records, report, active_signals=None, weights=None):
     return combined
 
 
-def backtest_stacking(records, backtest_n, k=20, active_signals=None, window=STACK_WINDOW):\n    """V5.2 strict OOS evaluation; the ranking predictor sees only each fold's prefix."""\n    if active_signals is None: active_signals = SIGNAL_NAMES\n    key = (len(records), backtest_n, k, tuple(active_signals), window, "oos-v52")\n    if key in _BT_CACHE: return _BT_CACHE[key]\n    n_test = max(1, min(backtest_n, len(records)-10))\n    def ranker(train, cands):\n        return predict_stacking_numbers(train, k=k, active_signals=active_signals, window=window)\n    report = evaluate_ranked_walk_forward(records, ALL_NUMS, lambda r:r.special, ranker, initial_train=len(records)-n_test, test_size=n_test, top_k=(k,))\n    hits = [f.hit_at_k[k] for f in report.folds]\n    _BT_CACHE[key] = hits\n    return hits\n\ndef clear_cache():
+def backtest_stacking(records, backtest_n, k=20, active_signals=None, window=STACK_WINDOW):
+    """V5.2 strict OOS evaluation; the ranking predictor sees only each fold's prefix."""
+    if active_signals is None: active_signals = SIGNAL_NAMES
+    key = (len(records), backtest_n, k, tuple(active_signals), window, "oos-v52")
+    if key in _BT_CACHE: return _BT_CACHE[key]
+    n_test = max(1, min(backtest_n, len(records)-10))
+    def ranker(train, cands):
+        return predict_stacking_numbers(train, k=k, active_signals=active_signals, window=window)
+    report = evaluate_ranked_walk_forward(records, ALL_NUMS, lambda r:r.special, ranker, initial_train=len(records)-n_test, test_size=n_test, top_k=(k,))
+    hits = [f.hit_at_k[k] for f in report.folds]
+    _BT_CACHE[key] = hits
+    return hits
+
+def clear_cache():
     _BT_CACHE.clear()
 
 
