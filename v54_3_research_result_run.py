@@ -38,7 +38,6 @@ def main():
     lines+=["| Layer | Scope | N | Hit@1 | Hit@3 | Hit@6 | LogLoss | Brier | ECE | IG |","|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for x in rows:
         lines.append("| {layer} | {scope} | {n} | {hit_at_1:.4f} | {hit_at_3:.4f} | {hit_at_6:.4f} | {logloss:.4f} | {brier:.4f} | {ece:.4f} | {information_gain:.4f} |".format(**{k:(0 if v is None else v) for k,v in x.items()}))
-    with open(os.path.join(args.output_dir,"report.md"),"w",encoding="utf-8") as f:f.write("
-".join(lines))
+    with open(os.path.join(args.output_dir,"report.md"),"w",encoding="utf-8") as f:f.write("\n".join(lines))
     print(json.dumps({"output_dir":args.output_dir,"rows":len(rows),"tests":len(raw)},ensure_ascii=False))
 if __name__=="__main__":main()
