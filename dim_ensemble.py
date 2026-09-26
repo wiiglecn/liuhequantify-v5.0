@@ -280,7 +280,31 @@ def predict_stacking_topk(records, extract, prior_fn, zmap, k):
     return ranked[:k]
 
 
-def backtest_stacking_topk(records, extract, prior_fn, backtest_n, k, window=STACK_WINDOW):\n    """V5.2 strict OOS top-k evaluation."""\n    key=(id(extract),backtest_n,k,window,"oos-v52-topk")\n    if key in _BT_CACHE:return _BT_CACHE[key]\n    n_test=max(1,min(backtest_n,len(records)-10))\n    def ranker(train,cands):\n        return predict_stacking_topk(train,extract,prior_fn,build_zodiac_map(train),k)\n    candidates=list(prior_fn(build_zodiac_map(records)).keys())\n    report=evaluate_ranked_walk_forward(records,candidates,extract,ranker,initial_train=len(records)-n_test,test_size=n_test,top_k=(k,))\n    hits=[f.hit_at_k[k] for f in report.folds];_BT_CACHE[key]=hits;return hits\n\n\ndef backtest_stacking(records, extract, prior_fn, backtest_n, window=STACK_WINDOW):\n    """V5.2 strict OOS exact-value evaluation."""\n    key=(id(extract),backtest_n,window,"oos-v52")\n    if key in _BT_CACHE:return _BT_CACHE[key]\n    n_test=max(1,min(backtest_n,len(records)-10))\n    def ranker(train,cands):\n        return predict_stacking_topk(train,extract,prior_fn,build_zodiac_map(train),1)\n    candidates=list(prior_fn(build_zodiac_map(records)).keys())\n    report=evaluate_ranked_walk_forward(records,candidates,extract,ranker,initial_train=len(records)-n_test,test_size=n_test,top_k=(1,))\n    hits=[f.hit_at_k[1] for f in report.folds];_BT_CACHE[key]=hits;return hits\n\n\ndef clear_cache():
+def backtest_stacking_topk(records, extract, prior_fn, backtest_n, k, window=STACK_WINDOW):
+    """V5.2 strict OOS top-k evaluation."""
+    key=(id(extract),backtest_n,k,window,"oos-v52-topk")
+    if key in _BT_CACHE:return _BT_CACHE[key]
+    n_test=max(1,min(backtest_n,len(records)-10))
+    def ranker(train,cands):
+        return predict_stacking_topk(train,extract,prior_fn,build_zodiac_map(train),k)
+    candidates=list(prior_fn(build_zodiac_map(records)).keys())
+    report=evaluate_ranked_walk_forward(records,candidates,extract,ranker,initial_train=len(records)-n_test,test_size=n_test,top_k=(k,))
+    hits=[f.hit_at_k[k] for f in report.folds];_BT_CACHE[key]=hits;return hits
+
+
+def backtest_stacking(records, extract, prior_fn, backtest_n, window=STACK_WINDOW):
+    """V5.2 strict OOS exact-value evaluation."""
+    key=(id(extract),backtest_n,window,"oos-v52")
+    if key in _BT_CACHE:return _BT_CACHE[key]
+    n_test=max(1,min(backtest_n,len(records)-10))
+    def ranker(train,cands):
+        return predict_stacking_topk(train,extract,prior_fn,build_zodiac_map(train),1)
+    candidates=list(prior_fn(build_zodiac_map(records)).keys())
+    report=evaluate_ranked_walk_forward(records,candidates,extract,ranker,initial_train=len(records)-n_test,test_size=n_test,top_k=(1,))
+    hits=[f.hit_at_k[1] for f in report.folds];_BT_CACHE[key]=hits;return hits
+
+
+def clear_cache():
     _BT_CACHE.clear()
 
 DIM_PRIOR_FN = {}
