@@ -12,3 +12,6 @@ from .nested_signal_research import *
 from .signal_stability import *
 
 from .signal_discovery import *
+
+from .regime_detection import *
+from .adaptive_ensemble import *
