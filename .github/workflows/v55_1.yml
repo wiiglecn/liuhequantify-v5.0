@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   push:
     branches: [dev]
+    paths:
+      - core/signal_discovery.py
+      - v55_1_signal_discovery_run.py
+      - tests/test_v551_signal_discovery.py
+      - macau_history.json
 
 jobs:
   research:
