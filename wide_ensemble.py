@@ -8,6 +8,8 @@
 import math
 import numpy as np
 from collections import Counter, defaultdict
+from core.evaluation_engine import evaluate_ranked_walk_forward
+from core.signal_registry import register_signal
 from analysis import build_report
 from dimensions import build_zodiac_map, special_zodiac_of
 
@@ -275,27 +277,7 @@ def _wide_linear_scores(records, report, active_signals=None, weights=None):
     return combined
 
 
-def backtest_stacking(records, backtest_n, k=20, active_signals=None,
-                      window=STACK_WINDOW):
-    """walk-forward 回测, 返回命中数组。带缓存避免重复计算。"""
-    if active_signals is None:
-        active_signals = SIGNAL_NAMES
-    key = (len(records), backtest_n, k, tuple(active_signals))
-    if key in _BT_CACHE:
-        return _BT_CACHE[key]
-    total_folds = max(backtest_n + window, len(records) - 10)
-    folds = precompute_folds(records, total_folds)
-    hits = []
-    start_idx = len(folds) - backtest_n
-    for i in range(start_idx, len(folds)):
-        rank = _rank_stacking(folds, i, active_signals, window)
-        actual = folds[i]["actual"]
-        hits.append(1 if actual in set(rank[:k]) else 0)
-    _BT_CACHE[key] = hits
-    return hits
-
-
-def clear_cache():
+def backtest_stacking(records, backtest_n, k=20, active_signals=None, window=STACK_WINDOW):\n    """V5.2 strict OOS evaluation; the ranking predictor sees only each fold's prefix."""\n    if active_signals is None: active_signals = SIGNAL_NAMES\n    key = (len(records), backtest_n, k, tuple(active_signals), window, "oos-v52")\n    if key in _BT_CACHE: return _BT_CACHE[key]\n    n_test = max(1, min(backtest_n, len(records)-10))\n    def ranker(train, cands):\n        return predict_stacking_numbers(train, k=k, active_signals=active_signals, window=window)\n    report = evaluate_ranked_walk_forward(records, ALL_NUMS, lambda r:r.special, ranker, initial_train=len(records)-n_test, test_size=n_test, top_k=(k,))\n    hits = [f.hit_at_k[k] for f in report.folds]\n    _BT_CACHE[key] = hits\n    return hits\n\ndef clear_cache():
     _BT_CACHE.clear()
 
 
@@ -316,4 +298,4 @@ if __name__ == "__main__":
     print(f"20颗大集合 Stacking: 近{n}期命中 {h/n*100:.1f}% (基线{base:.1f}% lift{h/n*100-base:+.1f}%)")
     nums = predict_stacking_numbers(records, 20)
     print(f"预测20颗: {sorted(nums)}")
-    print(f"耗时 {time.time()-t0:.1f}s")
+    print(f"耗时 {time.time()-t0:.1f}s")\n\n# V5.2 registry registration occurs after all signal functions are defined.\nfor _n, _fn in {\n    "freq": _signal_freq, "gap": _signal_gap, "markov": _signal_markov,\n    "recent": _signal_recent, "zodiac": _signal_zodiac, "uniform": _signal_uniform,\n}.items():\n    register_signal(f"wide.{_n}.v1", "v1", "wide", f"wide base signal: {_n}", _fn)\n
