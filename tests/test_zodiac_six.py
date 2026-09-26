@@ -4,7 +4,8 @@
 import unittest
 import random
 from data_fetcher import Record
-from dimensions import (predict_zodiac_pool, ZodiacPool, build_zodiac_map)
+from dimensions import (predict_zodiac_pool, ZodiacPool, build_zodiac_map,
+                        _zodiac_six_scores, special_zodiac_of)
 from llm_reasoner import LLMResult
 
 # 尝试导入待实现的函数(开发完成前可能失败)
@@ -123,6 +124,30 @@ class TestZodiacSix(unittest.TestCase):
         self.assertEqual(len(zs.zodiacs), 6)
         self.assertGreaterEqual(zs.hit_rate, 0.0)
         self.assertLessEqual(zs.hit_rate, 1.0)
+
+    def test_last_zodiac_discounted(self):
+        """反持续(生肖层): 上期生肖(seq[-1])得分被折扣0.5, 其它生肖不变; 排名不升。
+
+        自证: discount_last=1.0(关闭)时上期生肖得分偏高, =0.5(开启)后恰减半且
+        仅作用于上期生肖--证明折扣精准落在"上期开出生肖"上, 不波及其它。
+        """
+        zodiacs_cycle = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"]
+        recs = [mk(str(i), (i % 49) + 1, zodiac=zodiacs_cycle[i % 12]) for i in range(60)]
+        last_z = special_zodiac_of(recs[-1])  # 上期生肖 = 最后一期
+        self.assertTrue(last_z)
+        zmap = build_zodiac_map(recs)
+        s_off = _zodiac_six_scores(recs, None, zmap, 0.0, discount_last=1.0)   # 关闭
+        s_on = _zodiac_six_scores(recs, None, zmap, 0.0, discount_last=0.5)   # 开启
+        # 上期生肖得分恰减半
+        self.assertAlmostEqual(s_on[last_z], s_off[last_z] * 0.5)
+        # 其它生肖得分不变(折扣仅作用于上期生肖)
+        for z in s_off:
+            if z != last_z:
+                self.assertAlmostEqual(s_on[z], s_off[z])
+        # 排名不升(下降或持平), 体现"减少其出现在本期三/四/六肖"
+        rank_off = sorted(s_off, key=s_off.get, reverse=True).index(last_z)
+        rank_on = sorted(s_on, key=s_on.get, reverse=True).index(last_z)
+        self.assertGreaterEqual(rank_on, rank_off)
 
 
 if __name__ == "__main__":

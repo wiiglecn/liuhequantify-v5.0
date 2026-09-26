@@ -72,16 +72,28 @@ class TestWidePool(unittest.TestCase):
         self.assertAlmostEqual(wp.lift, wp.hit_rate - wp.baseline, places=6)
 
     def test_wide_pool_with_llm_seeds(self):
+        # 旧版线性模式(use_stacking=False): LLM 号码作为种子直接加分进入集合
         random.seed(9)
         recs = [mkrec(i) for i in range(60)]
         llm = LLMResult(inferred_models=["马尔可夫"],
                         predicted_set=[3, 12, 18, 25, 33, 41, 7, 14, 22, 30],
                         reasoning="r")
-        wp = predict_wide_pool(recs, llm_result=llm, backtest_n=10)
+        wp = predict_wide_pool(recs, llm_result=llm, backtest_n=10, use_stacking=False)
         self.assertEqual(len(wp.numbers), 20)
         # LLM 提供的号应作为种子进入集合
         for n in [3, 12, 18]:
             self.assertIn(n, wp.numbers)
+
+    def test_wide_pool_stacking(self):
+        # Stacking 模式(use_stacking=True, 默认): GBDT 回归器选号
+        random.seed(9)
+        recs = [mkrec(i) for i in range(60)]
+        wp = predict_wide_pool(recs, backtest_n=10, use_stacking=True)
+        self.assertEqual(len(wp.numbers), 20)
+        self.assertEqual(len(set(wp.numbers)), 20)  # 唯一
+        self.assertTrue(all(1 <= n <= 49 for n in wp.numbers))
+        self.assertGreaterEqual(wp.hit_rate, 0.0)
+        self.assertLessEqual(wp.hit_rate, 1.0)
 
 
 if __name__ == "__main__":

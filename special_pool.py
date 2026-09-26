@@ -9,7 +9,8 @@ from dataclasses import dataclass
 
 from analysis import build_report
 from backtest_utils import backtest_series, rolling_stability
-from dimensions import build_zodiac_map, _zodiac_six_scores
+from dimensions import (build_zodiac_map, _zodiac_six_scores, _LAST_ZODIAC_DISCOUNT,
+                        special_zodiac_of)
 
 if sys.platform == "win32":
     try:
@@ -175,16 +176,18 @@ def predict_special_pools(records, llm_result=None, backtest_n: int = 30,
 
 # ======================== 20 颗大集合(单组) ========================
 
-def _zodiac_bonus(records, zodiac_map):
+def _zodiac_bonus(records, zodiac_map, discount_last=_LAST_ZODIAC_DISCOUNT):
     """三/四/六肖命中给号码加分(与 dimensions._zodiac_six_scores 同口径, 纯统计可回测)。
 
     三肖⊆四肖⊆六肖, 命中越窄的集合越该进大集合:
       生肖∈三肖 -> +3.0; ∈四肖(非三) -> +2.0; ∈六肖(非四) -> +1.0; 其余 0。
     一次打分切片得 top3/4/6, 避免重复计算; zodiac_map 为空时返回 {}(信号不贡献)。
+    discount_last 透传给 _zodiac_six_scores: 与号码层 _wide_score 信号7同口径,
+    上期开出生肖被折扣 -> 跌出 top6 时其号码不再拿 bonus(双层抑制的上游)。
     """
     if not records or not zodiac_map:
         return {}
-    scores = _zodiac_six_scores(records, None, zodiac_map, 0.0)  # llm_weight=0 纯统计, 可回测
+    scores = _zodiac_six_scores(records, None, zodiac_map, 0.0, discount_last)  # llm_weight=0 纯统计, 可回测
     if not scores:
         return {}
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
@@ -202,13 +205,18 @@ def _zodiac_bonus(records, zodiac_map):
     return bonus
 
 
-def _wide_score(records, report, llm_result, zodiac_map=None):
+def _wide_score(records, report, llm_result, zodiac_map=None,
+                discount_last=_LAST_ZODIAC_DISCOUNT):
     """融合多信号为每个号码打分, 用于排序取 20 颗。
 
-    信号: 1频率 2遗漏 3马尔可夫一阶 4近期趋势 5大模型种子 6三/四/六肖生肖命中。
+    信号: 1频率 2遗漏 3马尔可夫一阶 4近期趋势 5大模型种子 6三/四/六肖生肖命中
+          7反持续(上期开出生肖号码群折扣)。
     信号6 取自生肖层预测(_zodiac_six_scores, 纯统计), 把高概率生肖的号码倾向性纳入
     号码集合, 使大集合与三肖/四肖/六肖预测保持一致。zodiac_map 未传时按 records 就地
     构建(回测每折用 train 自建, 不泄漏未来)。
+    信号7 对上期开出生肖对应的号码群得分乘 discount_last, 与生肖层(_zodiac_six_scores)
+    同口径, 抑制"上期生肖号码"经频率/遗漏/号码马尔可夫/趋势等非生肖路径混入大集合。
+    discount_last=1.0 关闭(对照用)。
     """
     scores = {n: 0.0 for n in range(1, 50)}
 
@@ -248,8 +256,23 @@ def _wide_score(records, report, llm_result, zodiac_map=None):
     # 6. 生肖集合信号(三/四/六肖命中; 纯统计可回测, 与 dimensions._zodiac_six_scores 同口径)
     if zodiac_map is None:
         zodiac_map = build_zodiac_map(records) if records else {}
-    for n, b in _zodiac_bonus(records, zodiac_map).items():
+    for n, b in _zodiac_bonus(records, zodiac_map, discount_last).items():
         scores[n] += b
+
+    # 7. 反持续性: 上期开出生肖(与生肖层 _zodiac_six_scores 的 seq[-1] 同源--
+    #    反向首个非空生肖)的号码群得分折扣, 降低其进入本期号码大集合。
+    #    同源保证两层永远瞄准同一生肖, 即便上期记录生肖字段缺失也不发散。
+    if discount_last != 1.0 and records and zodiac_map:
+        last_z = ""
+        for r in reversed(records):
+            z = special_zodiac_of(r)
+            if z:
+                last_z = z
+                break
+        if last_z:
+            for n, z in zodiac_map.items():
+                if z == last_z:
+                    scores[n] *= discount_last
 
     return scores
 
@@ -287,9 +310,45 @@ def _backtest_wide_pool(records, llm_result, n: int, k: int):
 
 
 def predict_wide_pool(records, llm_result=None, backtest_n: int = 30,
-                      k: int = WIDE_POOL_SIZE) -> WidePool:
-    """生成单组 20 颗号码的特码大集合, 并回测。"""
+                      k: int = WIDE_POOL_SIZE, use_stacking: bool = True) -> WidePool:
+    """生成单组 20 颗号码的特码大集合, 并回测。
+
+    use_stacking=True(默认): 采用 Stacking(GBDT 回归器+软标签)非线性集成,
+    与三肖/四肖/六肖的算法一致。6 路号码信号概率作为特征, GBDT 学习信号->排序
+    的非线性映射, 输出每个号码 P(命中), 取 top-20。
+    use_stacking=False: 回退旧版线性融合(频率+遗漏+马尔可夫+趋势+生肖+反持续)。
+    """
+    import math
     k = WIDE_POOL_SIZE
+    baseline = k / 49
+
+    if use_stacking:
+        try:
+            from wide_ensemble import predict_stacking_numbers, backtest_stacking, clear_cache as _wclear
+            _wclear()
+            numbers = sorted(predict_stacking_numbers(records, k))
+            if len(numbers) < k:
+                for n in range(1, 50):
+                    if n not in numbers:
+                        numbers.append(n)
+                        if len(numbers) == k:
+                            break
+            hits = backtest_stacking(records, backtest_n, k)
+            n_clamped = len(hits)
+            hr = sum(hits) / n_clamped if n_clamped else 0.0
+            se = math.sqrt(hr * (1 - hr) / n_clamped) if n_clamped else 0.0
+            stab = rolling_stability(hits) if n_clamped else 0.0
+            strategy = f"Stacking非线性集成(GBDT回归器+软标签); 6信号概率→排序→top{k}; {n_clamped}期walk-forward"
+            if llm_result and getattr(llm_result, "predicted_set", None):
+                strategy += "+LLM参考"
+            return WidePool(
+                numbers=numbers, strategy=strategy,
+                hit_rate=hr, baseline=baseline, lift=hr - baseline,
+                std_error=se, stability=stab,
+            )
+        except Exception:
+            pass  # 降级旧版线性
+
     report = build_report(records)
     numbers = _build_wide_pool(records, report, llm_result, k)
     numbers = sorted(set(numbers))
@@ -299,10 +358,10 @@ def predict_wide_pool(records, llm_result=None, backtest_n: int = 30,
                 numbers.append(n)
                 if len(numbers) == k:
                     break
-    hr, baseline, lift, se, stab = _backtest_wide_pool(records, llm_result, backtest_n, k)
+    hr2, baseline2, lift2, se2, stab2 = _backtest_wide_pool(records, llm_result, backtest_n, k)
     return WidePool(
         numbers=numbers,
-        strategy="频率+遗漏+马尔可夫+趋势+大模型+三/四/六肖生肖 多信号融合",
-        hit_rate=hr, baseline=baseline, lift=lift,
-        std_error=se, stability=stab,
+        strategy="频率+遗漏+马尔可夫+趋势+生肖(三/四/六肖)+反持续 线性融合(Stacking降级)",
+        hit_rate=hr2, baseline=baseline2, lift=lift2,
+        std_error=se2, stability=stab2,
     )

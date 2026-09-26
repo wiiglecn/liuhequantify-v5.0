@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """澳门六合彩分析与预测 - 图形界面版(tkinter)
-白底清爽主题 + 淡红主色调 + 3D 立体号码球 + 卡片流排版。"""
+浅色现代分析台主题 + 左侧导航控制台 + 3D 立体号码球 + 圆角卡片流。"""
 import os
 import sys
 import threading
@@ -41,22 +41,30 @@ from special_pool import predict_special_pools, predict_wide_pool
 from prediction_store import (serialize_run, save_run, load_runs,
                               verify_run, delete_run, clear_runs)
 
-# ======================== 主题配色 (白底清爽 + 淡红主色) ========================
-BG_MAIN = "#ffffff"        # 页面背景(白)
+# ======================== 主题配色 (浅色现代分析台) ========================
+BG_MAIN = "#eef1f6"        # 页面背景(浅灰蓝)
 BG_CARD = "#ffffff"        # 卡片背景(白)
-BG_CARD2 = "#f0f2f5"       # 卡片次级/表头底
-BORDER = "#f0d4d4"         # 卡片边框(淡红)
-BORDER_G = "#e6e8eb"       # 通用边框(灰)
-SHADOW = "#d8dce2"         # 卡片投影(灰)
-PRIMARY = "#e57373"        # 淡红主色
-PRIMARY_D = "#c05050"      # 深红
-PRIMARY_L = "#f6b4b4"      # 浅红
-ACCENT = "#e84545"         # 鲜红(高亮/推荐)
-TEXT = "#2c2f36"           # 主文字(深灰)
-TEXT2 = "#5a606b"          # 次文字
-MUTED = "#000000"          # 弱化文字(按要求改为黑色)
-OK = "#2ea043"             # 正向(lift>0)
-WARN = "#d68910"           # 警示
+BG_CARD2 = "#f8fafc"       # 嵌套层/磁贴底
+BG_SIDE = "#ffffff"        # 侧边导航底
+BORDER = "#edf0f5"         # 卡片边框
+BORDER_G = "#e3e7ef"       # 通用边框
+SHADOW = "#1a202c"         # 投影基色(PIL 低透明度柔影用)
+BALL_SHADOW = "#c9d1de"    # 号码球投影(浅底适配)
+PRIMARY = "#e11d48"        # 主色(红): 焦点/推荐/主按钮
+PRIMARY_D = "#be123c"      # 深红(悬停)
+PRIMARY_L = "#fb7185"      # 浅红(渐变端点)
+PRIMARY_BG = "#fff1f2"     # 主色浅底(导航选中/胶囊)
+ACCENT = "#e11d48"         # 高亮(同主色)
+INDIGO = "#6366f1"         # 辅助靛蓝(数据第二系)
+AMBER = "#f59e0b"          # 数据第三系
+TEXT = "#1a202c"           # 主文字
+TEXT2 = "#4b5261"          # 次文字
+MUTED = "#9aa1ad"          # 弱化文字(柔和灰)
+OK = "#059669"             # 正向/命中/就绪
+WARN = "#d97706"           # 警示/负向
+OK_BG = "#f0fdf4"          # 状态卡浅绿底
+OK_BORDER = "#d1fae5"      # 状态卡边框
+TRACK = "#eef1f6"          # 进度条/数据条轨道
 
 FONT = ("Microsoft YaHei UI", 10)
 FONT_SM = ("Microsoft YaHei UI", 9)
@@ -65,6 +73,8 @@ FONT_TITLE = ("Microsoft YaHei UI", 18, "bold")
 FONT_NUM = ("Consolas", 12, "bold")
 FONT_NUM_S = ("Consolas", 11, "bold")
 FONT_ZOD = ("Microsoft YaHei UI", 12, "bold")
+FONT_NAV = ("Microsoft YaHei UI", 10)
+FONT_NAV_B = ("Microsoft YaHei UI", 10, "bold")
 
 DISCLAIMER = (
     "科学提示: 彩票开奖本质为独立随机事件, 任何模型的真实命中率理论上均接近随机概率\n"
@@ -92,6 +102,77 @@ def _blend(c1, c2, t):
 def _hex_rgb(s):
     """#rrggbb -> (r, g, b) int 元组。"""
     return _hex(s[1:3]), _hex(s[3:5]), _hex(s[5:7])
+
+
+def _gradient_pil(w, h, c1, c2, radius=0):
+    """PIL 渲染水平双色渐变圆角图(RGBA); 无 PIL 返回 None。
+
+    横幅/Logo/数据条用; 水平渐变横向拉伸不失真, 可缓存复用。
+    """
+    if not _PIL_OK:
+        return None
+    w, h = max(2, int(w)), max(2, int(h))
+    r1, g1, b1 = _hex_rgb(c1)
+    r2, g2, b2 = _hex_rgb(c2)
+    t = _np.linspace(0.0, 1.0, w, dtype=_np.float32)
+    row = _np.stack([r1 + (r2 - r1) * t,
+                     g1 + (g2 - g1) * t,
+                     b1 + (b2 - b1) * t], axis=-1)
+    arr = _np.repeat(row[_np.newaxis, :, :], h, axis=0).clip(0, 255).astype(_np.uint8)
+    alpha = _np.full((h, w), 255, dtype=_np.uint8)
+    if radius > 0:
+        mask = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1],
+                                               radius=radius, fill=255)
+        alpha = _np.array(mask)
+    return Image.fromarray(_np.dstack([arr, alpha]))
+
+
+def _shadow_pil(w, h, radius, color=SHADOW, alpha=20, blur=8, dy=3):
+    """圆角卡片柔影(RGBA 透明底): 同形深色斑 + 高斯柔化 + 向下偏移 dy。无 PIL 返回 None。"""
+    if not _PIL_OK:
+        return None
+    w, h = max(2, int(w)), max(2, int(h))
+    m = blur + 4
+    sh = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(sh).rounded_rectangle(
+        [m, m + dy, w - m, h - m + dy], radius=radius,
+        fill=(*_hex_rgb(color), alpha))
+    return sh.filter(ImageFilter.GaussianBlur(blur))
+
+
+def draw_round_rect(cv, x1, y1, x2, y2, r, fill=None, outline=None, width=1,
+                    dash=None, tags=None):
+    """在 Canvas 上画圆角矩形(4 弧 + 2 矩形 / 4 弧 + 4 线, 纯矢量, 任意缩放不失真)。
+
+    dash 非空时边框为虚线(科学提示卡); tags 传给各图元便于批量删除/升降层。
+    """
+    r = max(0.0, min(float(r), (x2 - x1) / 2.0, (y2 - y1) / 2.0))
+    if r <= 0:
+        if fill:
+            cv.create_rectangle(x1, y1, x2, y2, fill=fill, outline="", tags=tags)
+        if outline:
+            cv.create_rectangle(x1, y1, x2, y2, outline=outline, width=width,
+                                dash=dash, tags=tags)
+        return
+    corners = (((x1, y1, x1 + 2 * r, y1 + 2 * r), 90),
+               ((x2 - 2 * r, y1, x2, y1 + 2 * r), 0),
+               ((x1, y2 - 2 * r, x1 + 2 * r, y2), 180),
+               ((x2 - 2 * r, y2 - 2 * r, x2, y2), 270))
+    if fill:
+        for box, start in corners:
+            cv.create_arc(*box, start=start, extent=90, style="pieslice",
+                          fill=fill, outline="", tags=tags)
+        cv.create_rectangle(x1 + r, y1, x2 - r, y2, fill=fill, outline="", tags=tags)
+        cv.create_rectangle(x1, y1 + r, x2, y2 - r, fill=fill, outline="", tags=tags)
+    if outline:
+        for box, start in corners:
+            cv.create_arc(*box, start=start, extent=90, style="arc",
+                          outline=outline, width=width, dash=dash, tags=tags)
+        cv.create_line(x1 + r, y1, x2 - r, y1, fill=outline, width=width, dash=dash, tags=tags)
+        cv.create_line(x1 + r, y2, x2 - r, y2, fill=outline, width=width, dash=dash, tags=tags)
+        cv.create_line(x1, y1 + r, x1, y2 - r, fill=outline, width=width, dash=dash, tags=tags)
+        cv.create_line(x2, y1 + r, x2, y2 - r, fill=outline, width=width, dash=dash, tags=tags)
 
 
 # 号码球 PhotoImage 缓存: 同一(尺寸/波色/命中)的球复用同一张图, 避免重复渲染
@@ -132,12 +213,12 @@ def _render_ball_pil(size, r, base, light, ring=None, scale=4):
     dc = _np.sqrt((xs - cx) ** 2 + (ys - cy) ** 2)
     alpha = _np.clip((R - dc) / (1.5 * scale) + 0.5, 0.0, 1.0)
     rgba = _np.dstack([rgb, (alpha * 255).astype(_np.uint8)])
-    sphere = Image.fromarray(rgba, "RGBA")
+    sphere = Image.fromarray(rgba)
     # 投影(柔化)
     sh = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     ImageDraw.Draw(sh).ellipse(
         [cx - R + 2 * scale, cy - R + 3 * scale, cx + R + 2 * scale, cy + R + 3 * scale],
-        fill=(*_hex_rgb(SHADOW), 90))
+        fill=(*_hex_rgb(BALL_SHADOW), 90))
     sh = sh.filter(ImageFilter.GaussianBlur(1.1 * scale))
     out = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     out.alpha_composite(sh)
@@ -163,9 +244,9 @@ def _get_ball_image(size, r, base, light, ring=None):
 
 def draw_sphere(cv, cx, cy, r, text, base, light, tcolor="#ffffff", font=FONT_NUM, ring=None):
     """在 Canvas 上画一颗 3D 立体球(投影 + 径向渐变 + 文字 + 可选命中金环)。"""
-    cv.create_oval(cx - r + 2, cy - r + 3, cx + r + 2, cy + r + 3, fill=SHADOW, outline="")
+    cv.create_oval(cx - r + 2, cy - r + 3, cx + r + 2, cy + r + 3, fill=BALL_SHADOW, outline="")
     cv.create_oval(cx - r, cy - r, cx + r, cy + r, fill=base,
-                   outline=_blend(base, SHADOW, 0.45))
+                   outline=_blend(base, BALL_SHADOW, 0.45))
     layers = 5
     for i in range(1, layers + 1):
         t = i / (layers + 1)
@@ -390,6 +471,8 @@ class App:
         self.root.bind_all("<Button-5>", self._on_wheel)
         self.nb.bind("<<NotebookTabChanged>>", self._on_tab_changed)
         self._render_placeholder()
+        # 启动自动恢复上次预测: 失败则保留欢迎占位页
+        self.root.after(200, self._restore_last_run)
 
     def _hover(self, btn, normal, hover):
         btn.bind("<Enter>", lambda e: btn.config(bg=hover))
@@ -403,7 +486,119 @@ class App:
                             "采用统计模型 + 大模型反推理, 给出多维度预测。\n\n" + DISCLAIMER,
                  bg=BG_CARD, fg=TEXT, font=FONT, justify="left").pack(anchor="w", pady=6)
 
-    # ---------------- 即将开奖期次 ----------------
+    def _restore_last_run(self):
+        """启动时自动恢复最近一次预测结果, 避免重新打开后预测面板为空。
+
+        从 prediction_history.json 取最新 run, 其预测结果(groups/dims/pools/...)
+        直接复用(只读回显); report 由当前缓存记录重算(为 _render_overview/
+        _compute_modes 提供数据); records 取当前缓存(含最新开奖, 命中状态随之更新)。
+        无可用 run 时静默失败, 保留欢迎占位页。
+        """
+        try:
+            from prediction_store import load_runs
+            from data_fetcher import load_cache
+            from analysis import build_report
+            from llm_reasoner import LLMResult
+            from predictor import PredictionGroup, SpecialPrediction
+            from special_pool import SpecialPool, WidePool
+            from dimensions import DimensionPrediction, ZodiacPool
+            runs = load_runs()
+            if not runs:
+                return False
+            run = runs[-1]
+            records = load_cache()
+            if len(records) < 2:
+                return False
+            report = build_report(records)
+
+            # 重建各组预测对象(从 asdict 序列化的 dict 还原, 补全所有 _render_* 所需字段)
+            def _mk_groups(gs):
+                out = []
+                for g in (gs or []):
+                    out.append(PredictionGroup(
+                        name=g.get("name", ""), regular=list(g.get("regular", [])),
+                        special=g.get("special", 0), strategy=g.get("strategy", ""),
+                        backtest_special_hit=g.get("backtest_special_hit", 0.0),
+                        backtest_regular_hits=g.get("backtest_regular_hits", 0.0)))
+                return out
+
+            def _mk_sps(ss):
+                out = []
+                for s in (ss or []):
+                    out.append(SpecialPrediction(
+                        name=s.get("name", ""), special=s.get("special", 0),
+                        strategy=s.get("strategy", ""),
+                        backtest_hit=s.get("backtest_hit", 0.0),
+                        lift=s.get("lift", 0.0)))
+                return out
+
+            def _mk_dims(ds):
+                out = []
+                for d in (ds or []):
+                    out.append(DimensionPrediction(
+                        name=d.get("name", ""), value=d.get("value", ""),
+                        strategy=d.get("strategy", ""),
+                        accuracy=d.get("accuracy", 0.0), baseline=d.get("baseline", 0.0),
+                        lift=d.get("lift", 0.0), std_error=d.get("std_error", 0.0),
+                        stability=d.get("stability", 0.0),
+                        mode_value=d.get("mode_value", ""), joint_number=d.get("joint_number", 0)))
+                return out
+
+            def _mk_pools(ps):
+                out = []
+                for p in (ps or []):
+                    out.append(SpecialPool(
+                        name=p.get("name", ""), numbers=list(p.get("numbers", [])),
+                        strategy=p.get("strategy", ""),
+                        hit_rate=p.get("hit_rate", 0.0), baseline=p.get("baseline", 0.0),
+                        lift=p.get("lift", 0.0), std_error=p.get("std_error", 0.0),
+                        stability=p.get("stability", 0.0)))
+                return out
+
+            def _mk_wide(d):
+                if not d:
+                    return None
+                return WidePool(
+                    numbers=list(d.get("numbers", [])), strategy=d.get("strategy", ""),
+                    hit_rate=d.get("hit_rate", 0.0), baseline=d.get("baseline", 0.0),
+                    lift=d.get("lift", 0.0), std_error=d.get("std_error", 0.0),
+                    stability=d.get("stability", 0.0))
+
+            def _mk_zpool(d):
+                if not d:
+                    return None
+                return ZodiacPool(
+                    zodiacs=list(d.get("zodiacs", [])), strategy=d.get("strategy", ""),
+                    hit_rate=d.get("hit_rate", 0.0), baseline=d.get("baseline", 0.0),
+                    lift=d.get("lift", 0.0), std_error=d.get("std_error", 0.0),
+                    stability=d.get("stability", 0.0))
+
+            has_llm = bool(run.get("llm_models") or run.get("llm_reasoning"))
+            self.results = dict(
+                records=records, report=report,
+                llm=LLMResult(inferred_models=run.get("llm_models", []),
+                              predicted_set=[], reasoning=run.get("llm_reasoning", "")) if has_llm else None,
+                groups=_mk_groups(run.get("groups")),
+                sp=_mk_sps(run.get("specials")),
+                dims=_mk_dims(run.get("dims")),
+                pools=_mk_pools(run.get("pools")),
+                wide=_mk_wide(run.get("wide")),
+                zp=_mk_zpool(run.get("zodiac")),
+                zq=_mk_zpool(run.get("zodiac_quad")),
+                zs=_mk_zpool(run.get("zodiac_six")),
+                bt=run.get("backtest_n", 0),
+            )
+            self._render_all()
+            basis = run.get("basis_expect", "")
+            created = run.get("created_at", "")[:16]
+            self._status(f"已载入上次预测(基于 {basis}, {created})。点击「开始分析」刷新。", MUTED)
+            return True
+        except Exception as e:
+            print(f"  ! _restore_last_run 失败: {type(e).__name__}: {e}")
+            self.results = None
+            return False
+
+
     def _set_next_issue(self, records):
         """根据记录更新"即将开奖"横幅(期号 + 倒计时目标)。"""
         ni = compute_next_issue(records)
@@ -450,7 +645,7 @@ class App:
 
         expect 非空时在标题后追加期次标签(如【第2026196期】), 置于"★ 推荐"之前。
         """
-        shadow = tk.Frame(parent, bg=SHADOW)
+        shadow = tk.Frame(parent, bg=BORDER_G)
         shadow.pack(fill="x", padx=14, pady=(8, 12))
         card = tk.Frame(shadow, bg=BG_CARD)
         card.pack(fill="x", padx=(0, 4), pady=(0, 5))
@@ -516,6 +711,34 @@ class App:
         if lift < -se:
             return ("✗负向", "✗ 低于基线", WARN)
         return ("≈噪声", "≈ 噪声范围", TEXT2)
+
+    def _compute_modes(self, recs, report):
+        """预计算各预测口径的"全期众数"(全历史最频值), 供各卡片对照展示。
+        返回 dict: special_mode(int)、zodiac_modes{k:list}、number_modes{k:list}。"""
+        from collections import Counter
+        modes = {}
+        freq = report.get("freq", {}) if report else {}
+        num_ranked = sorted(range(1, 50), key=lambda n: freq.get(n, 0), reverse=True)
+        modes["special_mode"] = num_ranked[0] if num_ranked else 0
+        modes["number_modes"] = {k: num_ranked[:k] for k in (10, 20)}
+        try:
+            from dimensions import special_zodiac_of
+            zc = Counter(special_zodiac_of(r) for r in recs if special_zodiac_of(r))
+        except Exception:
+            zc = Counter()
+        z_ranked = [z for z, _ in zc.most_common()]
+        modes["zodiac_modes"] = {k: z_ranked[:k] for k in (3, 4, 6)}
+        return modes
+
+    def _mode_ref(self, parent, mode_vals, pred_vals):
+        """渲染"全期众数"参考行: 预测值与众数不同则蓝色高亮(≠), 相同则灰色(=)。"""
+        ms = set(str(v) for v in mode_vals)
+        ps = set(str(v) for v in pred_vals)
+        shifted = ms != ps
+        color = ACCENT if shifted else MUTED
+        mark = "  ≠预测" if shifted else "  =预测"
+        text = "全期众数: " + " ".join(str(v) for v in mode_vals) + mark
+        tk.Label(parent, text=text, bg=BG_CARD, fg=color, font=FONT_SM).pack(anchor="w", pady=(2, 0))
 
     def _significance_chip(self, parent, lift, std_error):
         """提升显著性色块: 一眼判断"是否真有提升"。
@@ -678,6 +901,7 @@ class App:
         recs = r["records"]
         report = r["report"]
         last = recs[-1]
+        self._modes = self._compute_modes(recs, report)
         self._render_overview(recs, report, last, r["llm"])
         self._render_full(r["groups"])
         self._render_single(r["sp"])
@@ -746,6 +970,7 @@ class App:
             tk.Label(srow, text="特码", bg=BG_CARD, fg=MUTED, font=FONT_SM, width=4).pack(side="left")
             add_ball(srow, f"{g.special:02d}", "special")
             tk.Label(srow, text=f"  {g.strategy}", bg=BG_CARD, fg=MUTED, font=FONT_SM).pack(side="left", padx=8)
+            self._mode_ref(body, [self._modes["special_mode"]], [g.special])
             # 指标
             self._metric_row(body, [
                 ("特码命中率", f"{g.backtest_special_hit:.1%}", PRIMARY_L),
@@ -761,6 +986,7 @@ class App:
             row.pack(fill="x", pady=(2, 6))
             add_ball(row, f"{g.special:02d}", "special")
             tk.Label(row, text=f"  {g.strategy}", bg=BG_CARD, fg=MUTED, font=FONT_SM).pack(side="left", padx=6)
+            self._mode_ref(body, [self._modes["special_mode"]], [g.special])
             self._metric_row(body, [
                 ("命中率", f"{g.backtest_hit:.1%}", PRIMARY_L),
                 ("提升度", f"{g.lift:+.1%}", self._lift_color(g.lift)),
@@ -772,7 +998,7 @@ class App:
     def _render_dims(self, dims):
         a = self.areas["dims"]
         a.clear()
-        body = self._card(a.inner, "六维度特码属性  (各维独立贝叶斯预测 · 精确组合基线)")
+        body = self._card(a.inner, "六维度特码属性  (各维独立 · 衰减贝叶斯+马尔可夫混合 · 精确组合基线)")
         joint_n = dims[0].joint_number if dims else 0
         if joint_n:
             jrow = tk.Frame(body, bg=BG_CARD)
@@ -781,28 +1007,32 @@ class App:
                      font=("Consolas", 13, "bold")).pack(side="left")
             tk.Label(jrow, text="  ← 与六维预测最一致的号码(展示用, 不反向决定维度)",
                      bg=BG_CARD, fg=MUTED, font=FONT_SM).pack(side="left", padx=4)
-        # 表头
+        # 表头: 在"预测值"后插入"全期众数", 便于对比预测值是否随近期变动
         head = tk.Frame(body, bg=BG_CARD)
         head.pack(fill="x", pady=(2, 4))
-        for j, h in enumerate(["维度", "预测值", "准确率", "随机基线", "提升度", "标准误", "稳定性", "显著性"]):
+        _HEADERS = ["维度", "预测值", "全期众数", "准确率", "随机基线", "提升度", "标准误", "稳定性", "显著性"]
+        for j, h in enumerate(_HEADERS):
             tk.Label(head, text=h, bg=BG_CARD, fg=MUTED, font=FONT_SM,
-                     width=10 if 1 < j < 7 else 8, anchor="w").pack(side="left")
+                     width=15 if 3 <= j <= 7 else 8, anchor="w").pack(side="left")
         for d in dims:
             row = tk.Frame(body, bg=BG_CARD)
             row.pack(fill="x", pady=2)
             sig_short, _sig_full, sig_color = self._sig_verdict(d.lift, d.std_error)
-            vals = [d.name, d.value, f"{d.accuracy:.1%}", f"{d.baseline:.1%}",
+            # 预测值≠全期众数时高亮(说明模型随近期走势变动, 不再卡死); 相同时用普通色
+            mv = d.mode_value or "-"
+            shifted = bool(mv != "-") and str(d.value) != str(mv)
+            mode_color = ACCENT if shifted else MUTED
+            mode_label = mv + ("  ≠" if shifted else "")
+            vals = [d.name, d.value, mode_label, f"{d.accuracy:.1%}", f"{d.baseline:.1%}",
                     f"{d.lift:+.1%}", f"{d.std_error:.1%}", f"{d.stability:.2f}", sig_short]
-            colors = [TEXT, PRIMARY_L, PRIMARY_L, MUTED, self._lift_color(d.lift), TEXT, TEXT, sig_color]
-            widths = [8, 8, 10, 10, 10, 10, 10, 9]
+            colors = [TEXT, PRIMARY_L, mode_color, PRIMARY_L, MUTED, self._lift_color(d.lift), TEXT, TEXT, sig_color]
+            widths = [8, 8, 10, 10, 10, 10, 10, 10, 9]
             for v, c, w in zip(vals, colors, widths):
                 tk.Label(row, text=v, bg=BG_CARD, fg=c, font=FONT, width=w, anchor="w").pack(side="left")
         tk.Label(body, text="提升度 > 0 表示优于随机基线; 显著性: ✓有效=lift>标准误(可信), "
                             "≈噪声=|lift|≤标准误(与随机无异), ✗负=显著低于基线",
                  bg=BG_CARD, fg=MUTED, font=FONT_SM).pack(anchor="w", pady=(8, 0))
-        # 历史众数参考(全期最频, 不参与主预测; 主预测值=近期加权, 会随近期变动)
-        tk.Label(body, text="各维度历史众数(独立统计, 可能相互冲突, 仅参考):  "
-                            + "  ".join(f"{d.name} {d.mode_value or '-'}" for d in dims),
+        tk.Label(body, text="全期众数=全历史最频值(参考); 预测值与其不同(蓝色≠标记)说明模型已随近期走势翻动, 不再期期一样",
                  bg=BG_CARD, fg=MUTED, font=FONT_SM).pack(anchor="w", pady=(6, 0))
 
     def _render_pools(self, pools, wide):
@@ -816,6 +1046,7 @@ class App:
             row.pack(fill="x", pady=(2, 6))
             for n in p.numbers:
                 add_ball(row, f"{n:02d}", "pool")
+            self._mode_ref(body, self._modes["number_modes"].get(len(p.numbers), self._modes["number_modes"][10]), p.numbers)
             self._metric_row(body, [
                 ("命中率", f"{p.hit_rate:.1%}", PRIMARY_L),
                 ("基线", f"{p.baseline:.1%}", MUTED),
@@ -829,6 +1060,7 @@ class App:
         row.pack(fill="x", pady=(2, 6))
         for n in wide.numbers:
             add_ball(row, f"{n:02d}", "wide")
+        self._mode_ref(body, self._modes["number_modes"][20], wide.numbers)
         self._metric_row(body, [
             ("命中率", f"{wide.hit_rate:.1%}", PRIMARY_L),
             ("基线", f"{wide.baseline:.1%}", MUTED),
@@ -847,6 +1079,7 @@ class App:
         row.pack(fill="x", pady=(2, 8))
         for z in zp.zodiacs:
             add_ball(row, z, "zodiac")
+        self._mode_ref(body, self._modes["zodiac_modes"][3], zp.zodiacs)
         self._metric_row(body, [
             ("命中率", f"{zp.hit_rate:.1%}", PRIMARY_L),
             ("基线", f"{zp.baseline:.1%}", MUTED),
@@ -869,6 +1102,7 @@ class App:
         row.pack(fill="x", pady=(2, 8))
         for z in zq.zodiacs:
             add_ball(row, z, "zodiac")
+        self._mode_ref(body, self._modes["zodiac_modes"][4], zq.zodiacs)
         self._metric_row(body, [
             ("命中率", f"{zq.hit_rate:.1%}", PRIMARY_L),
             ("基线", f"{zq.baseline:.1%}", MUTED),
@@ -891,6 +1125,7 @@ class App:
         row.pack(fill="x", pady=(2, 8))
         for z in zs.zodiacs:
             add_ball(row, z, "zodiac")
+        self._mode_ref(body, self._modes["zodiac_modes"][6], zs.zodiacs)
         self._metric_row(body, [
             ("命中率", f"{zs.hit_rate:.1%}", PRIMARY_L),
             ("基线", f"{zs.baseline:.1%}", MUTED),
@@ -1213,12 +1448,46 @@ class App:
         clear_runs()
         self._history_refresh()
 
+    def _hist_modes(self, run):
+        """历史详情页专用: 基于 run 的 basis_expect 截断历史记录计算全期众数(无前视)。
+        返回与 _compute_modes 同结构的 dict: special_mode/zodiac_modes/number_modes。
+        records 来源 self._hist_records(刷新核对时拉取的最新数据); 找不到 basis_expect
+        或 history_count 时退回全部记录。"""
+        from collections import Counter
+        recs_all = self._hist_records if self._hist_records is not None else load_cache()
+        basis = run.get("basis_expect", "")
+        hcount = run.get("history_count", 0) or 0
+        # 截断: 优先按 basis_expect 定位, 其次按 history_count
+        cut = recs_all
+        try:
+            idx = next(i for i, r in enumerate(recs_all) if r.expect == basis)
+            cut = recs_all[:idx + 1]
+        except (StopIteration, AttributeError):
+            if 0 < hcount <= len(recs_all):
+                cut = recs_all[:hcount]
+        from analysis import number_frequency
+        freq = number_frequency(cut)
+        num_ranked = sorted(range(1, 50), key=lambda n: freq.get(n, 0), reverse=True)
+        modes = {
+            "special_mode": num_ranked[0] if num_ranked else 0,
+            "number_modes": {k: num_ranked[:k] for k in (10, 20)},
+        }
+        try:
+            from dimensions import special_zodiac_of
+            zc = Counter(special_zodiac_of(r) for r in cut if special_zodiac_of(r))
+        except Exception:
+            zc = Counter()
+        z_ranked = [z for z, _ in zc.most_common()]
+        modes["zodiac_modes"] = {k: z_ranked[:k] for k in (3, 4, 6)}
+        return modes
+
     def _render_history_detail(self, run):
         """只读渲染一期预测的全部明细, 并标注命中情况。"""
         a = self.areas["history_detail"]
         a.clear()
         rid = run.get("run_id", "")
         v = self._hist_verify.get(rid)
+        hmodes = self._hist_modes(run)
 
         # 预测目标期号: 已开奖取实际期号, 否则取基准期下一期(basis 为空/非数字时留空)
         if v is not None:
@@ -1289,6 +1558,7 @@ class App:
             add_ball(srow, f"{g.get('special', 0):02d}", "special", hit=bool(sp_hit))
             tk.Label(srow, text=f"  {g.get('strategy', '')}", bg=BG_CARD, fg=MUTED,
                      font=FONT_SM).pack(side="left", padx=8)
+            self._mode_ref(body, [hmodes["special_mode"]], [g.get("special", 0)])
             self._metric_row(body, [
                 ("特码命中率", f"{g.get('backtest_special_hit', 0):.1%}", PRIMARY_L),
                 ("平均平码命中", f"{g.get('backtest_regular_hits', 0):.2f}/6", TEXT),
@@ -1303,6 +1573,7 @@ class App:
             add_ball(row, f"{g.get('special', 0):02d}", "special", hit=bool(hit))
             tk.Label(row, text=f"  {g.get('strategy', '')}" + ("  ✓ 命中" if hit else ""),
                      bg=BG_CARD, fg=(OK if hit else MUTED), font=FONT_SM).pack(side="left", padx=6)
+            self._mode_ref(body, [hmodes["special_mode"]], [g.get("special", 0)])
             self._metric_row(body, [
                 ("命中率", f"{g.get('backtest_hit', 0):.1%}", PRIMARY_L),
                 ("提升度", f"{g.get('lift', 0):+.1%}", self._lift_color(g.get('lift', 0))),
@@ -1314,8 +1585,8 @@ class App:
             body = self._card(a.inner, "六维度特码属性", expect=target_expect)
             hrow = tk.Frame(body, bg=BG_CARD)
             hrow.pack(fill="x", pady=(2, 4))
-            for h, w in [("维度", 8), ("预测值", 8), ("实际", 8),
-                         ("命中", 8), ("准确率", 10), ("提升度", 10)]:
+            for h, w in [("维度", 10), ("预测值", 16), ("全期众数", 11), ("实际", 9),
+                         ("命中", 10), ("准确率", 12), ("提升度", 10)]:
                 tk.Label(hrow, text=h, bg=BG_CARD, fg=MUTED, font=FONT_SM,
                          width=w, anchor="w").pack(side="left")
             for d in dims:
@@ -1324,12 +1595,16 @@ class App:
                 actual_dim = v["dim_actuals"].get(name, "—") if v else "—"
                 row = tk.Frame(body, bg=BG_CARD)
                 row.pack(fill="x", pady=2)
-                vals = [name, str(d.get("value", "")), actual_dim,
+                mv = str(d.get("mode_value") or "-")
+                shifted = mv not in ("-", "") and str(d.get("value", "")) != mv
+                mode_col = ACCENT if shifted else MUTED
+                mode_lab = mv + ("  ≠" if shifted else "")
+                vals = [name, str(d.get("value", "")), mode_lab, actual_dim,
                         "✓" if hit else ("✗" if v else "—"),
                         f"{d.get('accuracy', 0):.1%}", f"{d.get('lift', 0):+.1%}"]
-                colors = [TEXT, PRIMARY_L, TEXT,
+                colors = [TEXT, PRIMARY_L, mode_col, TEXT,
                           (OK if hit else WARN), PRIMARY_L, self._lift_color(d.get('lift', 0))]
-                widths = [8, 8, 8, 8, 10, 10]
+                widths = [8, 15, 10, 8, 8, 10, 10]
                 for val, c, w in zip(vals, colors, widths):
                     tk.Label(row, text=val, bg=BG_CARD, fg=c, font=FONT,
                              width=w, anchor="w").pack(side="left")
@@ -1347,6 +1622,7 @@ class App:
             if v:
                 tk.Label(row, text=f"  {'✓ 含特码' if p_hit else '✗ 未含'}", bg=BG_CARD,
                          fg=(OK if p_hit else WARN), font=FONT_SM).pack(side="left", padx=6)
+            self._mode_ref(body, hmodes["number_modes"].get(len(nums), hmodes["number_modes"][10]), nums)
             self._metric_row(body, [
                 ("命中率", f"{p.get('hit_rate', 0):.1%}", PRIMARY_L),
                 ("提升度", f"{p.get('lift', 0):+.1%}", self._lift_color(p.get('lift', 0))),
@@ -1365,6 +1641,7 @@ class App:
             if v:
                 tk.Label(row, text=f"  {'✓ 含特码' if w_hit else '✗ 未含'}", bg=BG_CARD,
                          fg=(OK if w_hit else WARN), font=FONT_SM).pack(side="left", padx=6)
+            self._mode_ref(body, hmodes["number_modes"][20], nums)
             self._metric_row(body, [
                 ("命中率", f"{wide.get('hit_rate', 0):.1%}", PRIMARY_L),
                 ("提升度", f"{wide.get('lift', 0):+.1%}", self._lift_color(wide.get('lift', 0))),
@@ -1383,6 +1660,7 @@ class App:
                 tk.Label(row, text=f"  实际生肖: {v.get('actual_zodiac', '')}  "
                          f"{'✓ 命中' if z_hit else '✗ 未中'}", bg=BG_CARD,
                          fg=(OK if z_hit else WARN), font=FONT_SM).pack(side="left", padx=6)
+            self._mode_ref(body, hmodes["zodiac_modes"][3], zod.get("zodiacs", []))
             self._metric_row(body, [
                 ("命中率", f"{zod.get('hit_rate', 0):.1%}", PRIMARY_L),
                 ("提升度", f"{zod.get('lift', 0):+.1%}", self._lift_color(zod.get('lift', 0))),
@@ -1401,6 +1679,7 @@ class App:
                 tk.Label(row, text=f"  实际生肖: {v.get('actual_zodiac', '')}  "
                          f"{'✓ 命中' if zq_hit else '✗ 未中'}", bg=BG_CARD,
                          fg=(OK if zq_hit else WARN), font=FONT_SM).pack(side="left", padx=6)
+            self._mode_ref(body, hmodes["zodiac_modes"][4], zodq.get("zodiacs", []))
             self._metric_row(body, [
                 ("命中率", f"{zodq.get('hit_rate', 0):.1%}", PRIMARY_L),
                 ("提升度", f"{zodq.get('lift', 0):+.1%}", self._lift_color(zodq.get('lift', 0))),
@@ -1419,6 +1698,7 @@ class App:
                 tk.Label(row, text=f"  实际生肖: {v.get('actual_zodiac', '')}  "
                          f"{'✓ 命中' if zs_hit else '✗ 未中'}", bg=BG_CARD,
                          fg=(OK if zs_hit else WARN), font=FONT_SM).pack(side="left", padx=6)
+            self._mode_ref(body, hmodes["zodiac_modes"][6], zods.get("zodiacs", []))
             self._metric_row(body, [
                 ("命中率", f"{zods.get('hit_rate', 0):.1%}", PRIMARY_L),
                 ("提升度", f"{zods.get('lift', 0):+.1%}", self._lift_color(zods.get('lift', 0))),

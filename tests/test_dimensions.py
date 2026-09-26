@@ -76,19 +76,31 @@ class TestPredictDimensions(unittest.TestCase):
         recs = [mk(str(i), (i % 49) + 1) for i in range(60)]
         dims = predict_dimensions(recs, llm_result=None, backtest_n=10)
         by_name = {d.name: d for d in dims}
-        self.assertEqual(by_name["波色"].value, "红波")           # 恒选最大类
-        self.assertAlmostEqual(by_name["波色"].baseline, 17 / 49)
-        self.assertEqual(by_name["头数"].value, "1")              # 头1-4 等先验, 确定性取头1
-        self.assertAlmostEqual(by_name["头数"].baseline, 10 / 49)
-        # 动态维: 基线必须落在预测值可能的精确概率集合内
-        self.assertIn(by_name["尾数"].value, [str(t) for t in range(10)])
-        self.assertGreaterEqual(by_name["尾数"].baseline, 4 / 49 - 1e-9)
-        self.assertLessEqual(by_name["尾数"].baseline, 5 / 49 + 1e-9)
+        # 波色: top-2 集合, mk 数据全 red -> 红波必在集合内
+        # 基线 = 预测集合先验之和(红17/49+蓝或绿16/49 = 33/49, 或蓝+绿=32/49)
+        self.assertIn("红波", by_name["波色"].value_set)
+        self.assertGreaterEqual(by_name["波色"].baseline, 32 / 49 - 1e-9)
+        self.assertLessEqual(by_name["波色"].baseline, 34 / 49 + 1e-9)
+        # 头数: top-3 集合(合法头数 0-4), value_set 含 3 个值
+        # 基线 = 预测集合先验之和(头0=9/49, 头1-4=10/49), top-3 范围 [29/49, 30/49]
+        self.assertEqual(len(by_name["头数"].value_set), 3)
+        for h in by_name["头数"].value_set:
+            self.assertIn(h, list(range(5)))
+        self.assertGreaterEqual(by_name["头数"].baseline, 29 / 49 - 1e-9)
+        self.assertLessEqual(by_name["头数"].baseline, 30 / 49 + 1e-9)
+        # 尾数: top-4 集合(合法尾数 0-9), value_set 含 4 个值
+        # 基线 = 预测集合先验之和(尾0=4/49, 尾1-9=5/49), top-4 范围 [19/49, 20/49]
+        self.assertEqual(len(by_name["尾数"].value_set), 4)
+        for tail in by_name["尾数"].value_set:
+            self.assertIn(tail, list(range(10)))
+        self.assertGreaterEqual(by_name["尾数"].baseline, 19 / 49 - 1e-9)
+        self.assertLessEqual(by_name["尾数"].baseline, 20 / 49 + 1e-9)
         for nm in ("大小", "奇偶"):
             self.assertGreaterEqual(by_name[nm].baseline, 24 / 49 - 1e-9)
             self.assertLessEqual(by_name[nm].baseline, 25 / 49 + 1e-9)
-        # 生肖: mk 数据全 "鼠" 且特码轮转覆盖 1-49 -> 映射 {全部49号: 鼠}, 预测=鼠, 基线=49/49=1.0
-        self.assertEqual(by_name["生肖"].value, "鼠")
+        # 生肖: top-2, 但 mk 数据全"鼠"且覆盖1-49 -> 映射{全部49号:鼠}, 仅1个候选
+        # value_set=[鼠], baseline=49/49=1.0
+        self.assertIn("鼠", by_name["生肖"].value_set)
         self.assertAlmostEqual(by_name["生肖"].baseline, 1.0)
         # 全维 lift 与 accuracy-baseline 自洽
         for d in dims:
@@ -143,11 +155,12 @@ class TestJointAntiPersistence(unittest.TestCase):
         self.assertNotEqual(_joint_predict_number(recs, zmap, discount_last=0.0), 25)
 
     def test_default_not_stuck_on_last_special(self):
-        """25 与 26 交替、25 为末期: raw 下 25 胜出(先证场景有效);
+        """25 近期连续(末期为25): 衰减频率+转移使其 raw 下胜出(先证场景有效);
         默认半折后翻向次名, 不再 = 上一期特码25(回归"两期一模一样")。"""
         recs = self._spread_fillers()
         recs += [mk_rec("100", 26, "羊"), mk_rec("101", 25, "馬"),
-                 mk_rec("102", 26, "羊"), mk_rec("103", 25, "馬")]  # 末4: 26,25,26,25
+                 mk_rec("102", 25, "馬"), mk_rec("103", 25, "馬"),
+                 mk_rec("104", 25, "馬")]  # 末5: 26,25,25,25,25 (末期=25)
         zmap = build_zodiac_map(recs)
         # 先证"不惩罚"时 25 确实胜出 -> 场景有效(非平凡), 否则用例空过
         self.assertEqual(_joint_predict_number(recs, zmap, discount_last=1.0), 25)
