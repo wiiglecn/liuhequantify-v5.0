@@ -24,10 +24,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Unit tests
         run: python -m unittest tests/test_v58_set_prediction.py -v
-      - name: Run V5.8.1 historical research
+      - name: Run V5.8.2 K-specific meta-policy historical research
         run: python v58_set_prediction_run.py --input macau_history.json --output-dir reports/v5.8
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
-          name: v5.8-set-prediction
+          name: v5.8-2-k-specific-policy
           path: reports/v5.8/
