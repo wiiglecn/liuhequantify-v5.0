@@ -93,7 +93,9 @@ def _signal_gap(seq, vals):
 
 def _signal_prior(prior, vals):
     return {v: prior.get(v, 0.0) for v in vals}
-\n\nfor _n, _fn in {"freq":_signal_freq,"decay":_signal_decay,"markov":_signal_markov,"recent":_signal_recent,"gap":_signal_gap,"prior":_signal_prior}.items():
+
+
+for _n, _fn in {"freq":_signal_freq,"decay":_signal_decay,"markov":_signal_markov,"recent":_signal_recent,"gap":_signal_gap,"prior":_signal_prior}.items():
     register_signal(f"dimension.{_n}.v1","v1","dimension",f"dimension base signal: {_n}",_fn)
 
 def _compute_fold_probs(train, extract, prior, zmap):
