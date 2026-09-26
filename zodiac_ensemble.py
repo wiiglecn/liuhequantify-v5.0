@@ -178,7 +178,36 @@ def select_active_signals(folds, threshold=0.85):
 _BT_CACHE = {}  # (n_records, backtest_n) -> {k: hits_list}
 
 
-def _rank_current_stacking_zodiacs(records, k, active_signals=None, window=STACK_WINDOW, ne=STACK_N_EST, md=STACK_MAX_DEPTH, lr=STACK_LR):\n    if active_signals is None: active_signals = SIGNAL_NAMES\n    if len(records) < 60:\n        zmap = build_zodiac_map(records)\n        from dimensions import _build_zodiac_six\n        return _build_zodiac_six(records, None, zmap)[:k]\n    n_folds = max(1, len(records) - 10)\n    folds = precompute_folds(records, n_folds)\n    feats, labels = [], []\n    for f in folds:\n        for z in f["all_z"]:\n            feats.append([f["prob"][name].get(z, 0.0) for name in active_signals])\n            labels.append(1 if z == f["actual"] else 0)\n    if len(feats) < 50 or sum(labels) < 3:\n        return _rank_bma(folds, len(folds)-1, active_signals)[:k]\n    try:\n        from sklearn.ensemble import GradientBoostingClassifier\n        clf = GradientBoostingClassifier(n_estimators=ne, max_depth=md, learning_rate=lr, subsample=0.8, random_state=42)\n        clf.fit(feats, labels)\n        zmap = build_zodiac_map(records)\n        prob, all_z = _compute_fold_probs(records, zmap)\n        X = [[prob[name].get(z,0.0) for name in active_signals] for z in all_z]\n        proba = clf.predict_proba(X); pos = list(clf.classes_).index(1) if 1 in clf.classes_ else 0\n        scores = proba[:,pos] if proba.ndim==2 else proba\n        return [z for _,z in sorted(zip(scores,all_z), reverse=True)][:k]\n    except Exception:\n        return _rank_bma(folds, len(folds)-1, active_signals)[:k]\n\n\ndef predict_stacking_zodiacs(records, k, active_signals=None,
+def _rank_current_stacking_zodiacs(records, k, active_signals=None, window=STACK_WINDOW, ne=STACK_N_EST, md=STACK_MAX_DEPTH, lr=STACK_LR):
+    if active_signals is None: active_signals = SIGNAL_NAMES
+    if len(records) < 60:
+        zmap = build_zodiac_map(records)
+        from dimensions import _build_zodiac_six
+        return _build_zodiac_six(records, None, zmap)[:k]
+    n_folds = max(1, len(records) - 10)
+    folds = precompute_folds(records, n_folds)
+    feats, labels = [], []
+    for f in folds:
+        for z in f["all_z"]:
+            feats.append([f["prob"][name].get(z, 0.0) for name in active_signals])
+            labels.append(1 if z == f["actual"] else 0)
+    if len(feats) < 50 or sum(labels) < 3:
+        return _rank_bma(folds, len(folds)-1, active_signals)[:k]
+    try:
+        from sklearn.ensemble import GradientBoostingClassifier
+        clf = GradientBoostingClassifier(n_estimators=ne, max_depth=md, learning_rate=lr, subsample=0.8, random_state=42)
+        clf.fit(feats, labels)
+        zmap = build_zodiac_map(records)
+        prob, all_z = _compute_fold_probs(records, zmap)
+        X = [[prob[name].get(z,0.0) for name in active_signals] for z in all_z]
+        proba = clf.predict_proba(X); pos = list(clf.classes_).index(1) if 1 in clf.classes_ else 0
+        scores = proba[:,pos] if proba.ndim==2 else proba
+        return [z for _,z in sorted(zip(scores,all_z), reverse=True)][:k]
+    except Exception:
+        return _rank_bma(folds, len(folds)-1, active_signals)[:k]
+
+
+def predict_stacking_zodiacs(records, k, active_signals=None,
                               window=STACK_WINDOW, ne=STACK_N_EST,
                               md=STACK_MAX_DEPTH, lr=STACK_LR):
     """预测下一期 top-k 生肖: 用全部历史训练 GBDT, 预测当前信号特征。
