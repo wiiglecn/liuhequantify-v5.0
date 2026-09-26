@@ -7,7 +7,7 @@ Final holdout is evaluated with one policy fit only from pre-holdout OOS folds.
 """
 from dataclasses import dataclass, asdict
 from typing import Mapping, Sequence, Any
-from .signal_metrics import metric_summary, binomial_two_sided_pvalue
+from .signal_metrics import metric_summary, binomial_two_sided_pvalue, bootstrap_metric_ci
 from .signal_analysis import pearson, redundancy_groups
 from .ensemble_weighting import fit_logloss_weights, combine_signal_probabilities
 from .calibration import fit_temperature, apply_temperature
@@ -102,12 +102,16 @@ def evaluate_nested_folds(folds, candidates, signal_names, cfg=None):
     for f in folds[holdout_start:]:
         holdout_rows.append((predict_policy(final_policy,f,candidates),f["actual"]))
     holdout_metrics=metric_summary(holdout_rows,top_k=cfg.top_k)
+    outer_ci={m:bootstrap_metric_ci(outer,m) for m in ("hit_at_1","hit_at_3","hit_at_6","logloss","brier","ece","information_gain")}
+    holdout_ci={m:bootstrap_metric_ci(holdout_rows,m) for m in ("hit_at_1","hit_at_3","hit_at_6","logloss","brier","ece","information_gain")}
     return {
         "outer":metrics,
+        "outer_bootstrap_ci":outer_ci,
         "outer_n":len(outer),
         "outer_p_value_vs_baseline":pvalues,
         "holdout_start":holdout_start,
         "final_holdout":holdout_metrics,
+        "final_holdout_bootstrap_ci":holdout_ci,
         "final_policy":final_policy.to_dict(),
         "policy_path":policies,\n        "signal_outer_rows":signal_outer,\n        "signal_p_values":signal_p,
         "holdout_isolated":True,
