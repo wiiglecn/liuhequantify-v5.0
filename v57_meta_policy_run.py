@@ -43,44 +43,42 @@ def evaluate_layer(name,folds,signals,candidates,target_ks,args):
         raise ValueError(name+" insufficient usable folds: "+str(len(usable)))
     rc=RegimeConfig(n_regimes=args.regimes,context_window=args.context_window,
                     min_history=args.min_history)
-    regimes=[]; details=[]
-    for j in range(len(usable)):
-        if j<args.min_history:
-            regimes.append(0); details.append({"status":"insufficient_history","n_history":j})
-        else:
-            h=usable[max(0,j-args.context_window*4):j]
-            d=RegimeDetector(rc).fit(h,signals,candidates)
-            r=d.assign(usable[j],signals,candidates)
-            regimes.append(r)
-            details.append({"status":"ok","n_history":len(h),"regime":r})
     cfg=HorizonConfig(windows=tuple(args.horizons),min_history=args.min_history,
                       shrinkage=args.shrinkage,min_weight=args.min_weight,
                       temperature=args.temperature,regime_weight=args.regime_weight)
-    res=evaluate_meta(usable,candidates,signals,regimes,target_ks,cfg,
-                      args.min_history,args.final_holdout)
+    res=evaluate_meta(usable,candidates,signals,None,target_ks,cfg,
+                      args.min_history,args.final_holdout,regime_config=rc)
+    # Outer regime IDs are target-local. Do not chain them into a global transition matrix.
+    # For diagnostics, use one detector fit on pre-holdout history.
+    hs=len(usable)-args.final_holdout
+    pre=usable[:hs]
+    h=pre[max(0,len(pre)-args.context_window*4):] if args.context_window else pre
+    fd=RegimeDetector(rc).fit(h,signals,candidates)
+    fixed_regimes=[fd.assign(f,signals,candidates) for f in pre]
+    holdout_regime=fd.assign(usable[hs],signals,candidates) if hs<len(usable) else 0
     out={"layer":name,"folds":len(usable),"signals":signals,
-         "candidates":len(candidates),"regime_count":len(set(regimes)),
-         "regimes":regimes,"regime_details":details,
-         "regime_transitions":transition_stats(regimes),
+         "candidates":len(candidates),"regime_count":len(set(fixed_regimes)),
+         "regime_diagnostics":{"coordinate":"single pre-holdout detector",
+                               "history_regimes":fixed_regimes,
+                               "holdout_regime":int(holdout_regime),
+                               "transitions":transition_stats(fixed_regimes)},
          "targets":{},"holdout_isolated":True}
     for k in target_ks:
         outer=res["outer_by_k"][k]; hold=res["holdout_by_k"][k]
-        om=metric_summary(outer,top_k=(k,))
-        hm=metric_summary(hold,top_k=(k,))
+        om=metric_summary(outer,top_k=(k,)); hm=metric_summary(hold,top_k=(k,))
         base=min(1.0,k/max(1,len(candidates)))
         hits=int(round(om.get("hit_at_"+str(k),0)*len(outer)))
         out["targets"][str(k)]={
-            "outer":om,"outer_n":len(outer),
-            "outer_baseline":base,
+            "outer":om,"outer_n":len(outer),"outer_baseline":base,
             "outer_p_value":binomial_two_sided_pvalue(hits,len(outer),base),
             "outer_ci":{m:bootstrap_metric_ci(outer,m,rounds=args.bootstrap_rounds,top_k=(k,))
                         for m in ("hit_at_"+str(k),"logloss","brier","ece","information_gain")},
             "final_holdout":hm,"holdout_n":len(hold),
             "final_holdout_ci":{m:bootstrap_metric_ci(hold,m,rounds=args.bootstrap_rounds,top_k=(k,))
                                 for m in ("hit_at_"+str(k),"logloss","brier","ece","information_gain")},
-            "final_policy":res["final_policy"][k],
-            "policy_path":res["policy_path"][k]
-        }
+            "final_policy":res["final_policy"][k],"policy_path":res["policy_path"][k]}
+    out["regime_policy_path"]=res["regime_path"]
+    out["final_detector"]=res["final_detector"]
     return out
 
 def main():
@@ -116,7 +114,7 @@ def main():
             f.write("## "+name+"\n\n")
             f.write("folds=%d; signals=%d; regimes=%d; regime persistence=%.4f\n\n" %
                     (r["folds"],len(r["signals"]),r["regime_count"],
-                     r["regime_transitions"]["persistence"]))
+                     r["regime_diagnostics"]["transitions"]["persistence"]))
             f.write("| Target | Outer Hit@K | Holdout Hit@K | Random baseline | Outer p-value | Selected horizon |\n|---:|---:|---:|---:|---:|---:|\n")
             for ks,t in r["targets"].items():
                 f.write("| %s | %.4f | %.4f | %.4f | %.4f | %s |\n" %
