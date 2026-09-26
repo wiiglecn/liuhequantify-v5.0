@@ -13,7 +13,7 @@ This module contains no model fitting and never mutates a policy.
 from math import sqrt
 from collections import defaultdict
 from .multiple_testing import benjamini_hochberg, bonferroni
-from .signal_metrics import metric_summary, information_gain
+from .signal_metrics import metric_summary, multiclass_logloss, multiclass_brier
 
 def _mean(xs):
     return sum(xs)/len(xs) if xs else 0.0
@@ -36,8 +36,8 @@ def bootstrap_mean_ci(values, iterations=1000, seed=542):
 
 def metric_ci(rows, top_k=(1,3,6), iterations=1000):
     rows=list(rows); out=metric_summary(rows,top_k=top_k)
-    series={"logloss":[-information_gain(p,a) for p,a in rows],
-            "brier":[sum((float(v)-(1.0 if c==a else 0.0))**2 for c,v in p.items()) for p,a in rows]}
+    series={"logloss":[multiclass_logloss(p,a) for p,a in rows],
+            "brier":[multiclass_brier(p,a) for p,a in rows]}
     for k in top_k:
         series[f"hit_at_{k}"]=[float(a in sorted(p,key=p.get,reverse=True)[:k]) for p,a in rows]
     out["bootstrap_ci"]={m:bootstrap_mean_ci(v,iterations=iterations) for m,v in series.items()}
