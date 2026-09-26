@@ -12,6 +12,8 @@
 import math
 import numpy as np
 from collections import Counter, defaultdict
+from core.evaluation_engine import evaluate_ranked_walk_forward
+from core.signal_registry import register_signal
 from dimensions import (
     DIMENSIONS, comb_prior, build_zodiac_map, _freq_predict,
 )
@@ -91,7 +93,7 @@ def _signal_gap(seq, vals):
 
 def _signal_prior(prior, vals):
     return {v: prior.get(v, 0.0) for v in vals}
-
+\n\nfor _n, _fn in {"freq":_signal_freq,"decay":_signal_decay,"markov":_signal_markov,"recent":_signal_recent,"gap":_signal_gap,"prior":_signal_prior}.items():\n    register_signal(f"dimension.{_n}.v1","v1","dimension",f"dimension base signal: {_n}",_fn)\n
 def _compute_fold_probs(train, extract, prior, zmap):
     """计算一折的各信号概率。返回 {signal: {val: prob}}。"""
     vals = list(prior.keys()) if prior else []
@@ -276,43 +278,7 @@ def predict_stacking_topk(records, extract, prior_fn, zmap, k):
     return ranked[:k]
 
 
-def backtest_stacking_topk(records, extract, prior_fn, backtest_n, k, window=STACK_WINDOW):
-    """walk-forward 回测 top-k: 真实值落在 top-k 内即命中。带缓存。"""
-    key = (id(extract), backtest_n, k, window, "topk")
-    if key in _BT_CACHE:
-        return _BT_CACHE[key]
-    total_folds = max(backtest_n + window, len(records) - 10)
-    folds = precompute_folds(records, extract, prior_fn, total_folds)
-    hits = []
-    start_idx = len(folds) - backtest_n
-    for i in range(start_idx, len(folds)):
-        rank = _rank_stacking(folds, i, window)
-        actual = folds[i]["actual"]
-        hits.append(1 if rank and actual in set(rank[:k]) else 0)
-    _BT_CACHE[key] = hits
-    return hits
-
-
-
-def backtest_stacking(records, extract, prior_fn, backtest_n,
-                      window=STACK_WINDOW):
-    """walk-forward 回测, 返回命中数组。带缓存。"""
-    key = (id(extract), backtest_n, window)
-    if key in _BT_CACHE:
-        return _BT_CACHE[key]
-    total_folds = max(backtest_n + window, len(records) - 10)
-    folds = precompute_folds(records, extract, prior_fn, total_folds)
-    hits = []
-    start_idx = len(folds) - backtest_n
-    for i in range(start_idx, len(folds)):
-        rank = _rank_stacking(folds, i, window)
-        actual = folds[i]["actual"]
-        hits.append(1 if rank and actual == rank[0] else 0)
-    _BT_CACHE[key] = hits
-    return hits
-
-
-def clear_cache():
+def backtest_stacking_topk(records, extract, prior_fn, backtest_n, k, window=STACK_WINDOW):\n    """V5.2 strict OOS top-k evaluation."""\n    key=(id(extract),backtest_n,k,window,"oos-v52-topk")\n    if key in _BT_CACHE:return _BT_CACHE[key]\n    n_test=max(1,min(backtest_n,len(records)-10))\n    def ranker(train,cands):\n        return predict_stacking_topk(train,extract,prior_fn,build_zodiac_map(train),k)\n    candidates=list(prior_fn(build_zodiac_map(records)).keys())\n    report=evaluate_ranked_walk_forward(records,candidates,extract,ranker,initial_train=len(records)-n_test,test_size=n_test,top_k=(k,))\n    hits=[f.hit_at_k[k] for f in report.folds];_BT_CACHE[key]=hits;return hits\n\n\ndef backtest_stacking(records, extract, prior_fn, backtest_n, window=STACK_WINDOW):\n    """V5.2 strict OOS exact-value evaluation."""\n    key=(id(extract),backtest_n,window,"oos-v52")\n    if key in _BT_CACHE:return _BT_CACHE[key]\n    n_test=max(1,min(backtest_n,len(records)-10))\n    def ranker(train,cands):\n        return predict_stacking_topk(train,extract,prior_fn,build_zodiac_map(train),1)\n    candidates=list(prior_fn(build_zodiac_map(records)).keys())\n    report=evaluate_ranked_walk_forward(records,candidates,extract,ranker,initial_train=len(records)-n_test,test_size=n_test,top_k=(1,))\n    hits=[f.hit_at_k[1] for f in report.folds];_BT_CACHE[key]=hits;return hits\n\n\ndef clear_cache():
     _BT_CACHE.clear()
 
 DIM_PRIOR_FN = {}
