@@ -15,3 +15,5 @@ from .signal_discovery import *
 
 from .regime_detection import *
 from .adaptive_ensemble import *
+
+from .v57_meta_policy import *
