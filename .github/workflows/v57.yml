@@ -3,6 +3,13 @@ on:
   workflow_dispatch:
   push:
     branches: [dev]
+    paths:
+      - core/v57_meta_policy.py
+      - core/regime_detection.py
+      - core/signal_metrics.py
+      - v57_meta_policy_run.py
+      - tests/test_v57_meta_policy.py
+      - macau_history.json
 jobs:
   research:
     runs-on: ubuntu-latest
