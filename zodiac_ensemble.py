@@ -25,7 +25,8 @@ BASE_SIGNALS = [
     ("bayes", _signal_bayes), ("numcount", _signal_numcount),
 ]
 SIGNAL_NAMES = [n for n, _ in BASE_SIGNALS]
-\n# V5.2 unified registry: metadata only; execution remains in this module.
+
+# V5.2 unified registry: metadata only; execution remains in this module.
 for _n, _fn in BASE_SIGNALS:
     register_signal(f"zodiac.{_n}.v1", "v1", "zodiac", f"zodiac base signal: {_n}", _fn)
 DEFAULT_W = {"freq": 3.0, "markov": 4.0, "cross_dim": 2.0,
