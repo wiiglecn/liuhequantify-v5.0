@@ -64,38 +64,40 @@ def fit_meta_policy(history, signal_names, candidates, regime, target_k, config=
     names=list(signal_names)
     if len(history)<cfg.min_history:
         raise ValueError("insufficient history")
-    global_rows=list(history)
-    global_scores=_signal_scores(global_rows,names,target_k,candidates)
+    global_scores=_signal_scores(history,names,target_k,candidates)
     global_w=_softmax(global_scores,cfg.temperature)
-    candidates_windows=[w for w in cfg.windows if w<=len(history)]
-    if not candidates_windows:
-        candidates_windows=[len(history)]
+    candidate_windows=[w for w in cfg.windows if w<=len(history)]
+    if not candidate_windows:
+        candidate_windows=[len(history)]
     best=None
-    local_all=_rows(history,regime)
-    for w in candidates_windows:
-        all_w=history[-w:]
-        local=[r for r in all_w if r.get("regime")==regime] or all_w
-        local_scores=_signal_scores(local,names,target_k,candidates)
+    for w in candidate_windows:
+        window=history[-w:]
+        val_n=max(10,min(30,len(window)//5))
+        if len(window)<=val_n:
+            val_n=max(1,len(window)//3)
+        train=window[:-val_n] if len(window)>val_n else window
+        valid=window[-val_n:]
+        local_train=[r for r in train if r.get("regime")==regime] or train
+        local_scores=_signal_scores(local_train,names,target_k,candidates)
         local_w=_softmax(local_scores,cfg.temperature)
         weights=_blend(local_w,global_w,cfg.shrinkage,cfg.min_weight)
-        eval_rows=local_all[-w:] if len(local_all)>=w else local_all
-        if not eval_rows:
-            eval_rows=all_w
-        rows=[r for r in eval_rows if r.get("actual") in candidates]
-        if not rows:
+        rows=[r for r in valid if r.get("actual") in candidates]
+        if rows:
             score=0.0
+            for r in rows:
+                p=combine_signal_probabilities(
+                    {n:r["prob"].get(n,{}) for n in names},candidates,weights)
+                score+=hit_at_k(sorted(p,key=p.get,reverse=True),r["actual"],target_k)
+            score/=len(rows)
         else:
-            score=sum(hit_at_k(sorted(combine_signal_probabilities(
-                {n:r["prob"].get(n,{}) for n in names},candidates,weights),
-                key=lambda x:combine_signal_probabilities(
-                    {n:r["prob"].get(n,{}) for n in names},candidates,weights).get(x,0.0),
-                reverse=True),r["actual"],target_k) for r in rows)/len(rows)
-        # Conservative shrink toward the all-history score to reduce horizon overfit.
-        score=cfg.regime_weight*score+(1-cfg.regime_weight)*sum(
-            hit_at_k(sorted(r["prob"][n],key=r["prob"][n].get,reverse=True),r["actual"],target_k)
-            for r in rows for n in [] ) if False else score
-        policy=MetaPolicy(target_k,w,weights,int(regime),len(history),float(score))
-        if best is None or (policy.score, -policy.horizon)>(best.score,-best.horizon):
+            score=0.0
+        # Refit the selected horizon on all pre-target observations only.
+        full_local=[r for r in window if r.get("regime")==regime] or window
+        full_scores=_signal_scores(full_local,names,target_k,candidates)
+        full_local_w=_softmax(full_scores,cfg.temperature)
+        final_weights=_blend(full_local_w,global_w,cfg.shrinkage,cfg.min_weight)
+        policy=MetaPolicy(target_k,w,final_weights,int(regime),len(history),float(score))
+        if best is None or (policy.score,-policy.horizon)>(best.score,-best.horizon):
             best=policy
     return best
 
