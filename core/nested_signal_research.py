@@ -109,7 +109,7 @@ def evaluate_nested_folds(folds, candidates, signal_names, cfg=None):
         "holdout_start":holdout_start,
         "final_holdout":holdout_metrics,
         "final_policy":final_policy.to_dict(),
-        "policy_path":policies,
+        "policy_path":policies,\n        "signal_outer_rows":signal_outer,\n        "signal_p_values":signal_p,
         "holdout_isolated":True,
         "selection_rule":"inner OOS logloss + redundancy filter; weights and temperature fit on inner OOS only",
     }
