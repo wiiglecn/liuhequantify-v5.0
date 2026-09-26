@@ -75,6 +75,22 @@ def metric_summary(rows:Iterable[tuple[Mapping[Any,float],Any]],top_k=(1,3,6))->
         out[f"hit_at_{k}"]=sum(hit_at_k(sorted(p,key=p.get,reverse=True),a,k) for p,a in rows)/n
     return out
 
+def bootstrap_metric_ci(rows, metric, rounds=1000, seed=20260926, confidence=.95):
+    """Non-parametric bootstrap CI for an OOS metric."""
+    rows=list(rows); n=len(rows)
+    if not rows:
+        return {"low":0.0,"high":0.0,"mean":0.0,"rounds":0}
+    import random
+    rng=random.Random(seed); vals=[]
+    for _ in range(max(1,rounds)):
+        sample=[rows[rng.randrange(n)] for _ in range(n)]
+        vals.append(metric_summary(sample).get(metric,0.0))
+    vals.sort()
+    alpha=(1.0-confidence)/2.0
+    lo=vals[min(len(vals)-1,max(0,int(alpha*len(vals))))]
+    hi=vals[min(len(vals)-1,max(0,int((1-alpha)*len(vals))-1))]
+    return {"low":lo,"high":hi,"mean":sum(vals)/len(vals),"rounds":len(vals)}
+
 def binomial_two_sided_pvalue(hits:int,n:int,baseline:float)->float:
     if n<=0:return 1.0
     baseline=min(1.0-EPS,max(EPS,float(baseline)));se=sqrt(baseline*(1-baseline)/n)
