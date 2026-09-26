@@ -22,7 +22,7 @@ def fit_adaptive_weights(history,signal_names,candidates,regime=None,config=None
     def losses(rows):
         out={}
         for n in names:
-            z=[multiclass_logloss([(r["prob"].get(n,{}),r["actual"])],candidates) for r in rows if r.get("actual") in candidates]
+            z=[multiclass_logloss(r["prob"].get(n,{}),r["actual"]) for r in rows if r.get("actual") in candidates]
             out[n]=sum(z)/len(z) if z else 0.0
         return out
     lw=_weights(losses(local),cfg.temperature); gw=_weights(losses(history),cfg.temperature)
