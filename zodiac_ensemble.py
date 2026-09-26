@@ -25,7 +25,10 @@ BASE_SIGNALS = [
     ("bayes", _signal_bayes), ("numcount", _signal_numcount),
 ]
 SIGNAL_NAMES = [n for n, _ in BASE_SIGNALS]
-\n# V5.2 unified registry: metadata only; execution remains in this module.\nfor _n, _fn in BASE_SIGNALS:\n    register_signal(f"zodiac.{_n}.v1", "v1", "zodiac", f"zodiac base signal: {_n}", _fn)\nDEFAULT_W = {"freq": 3.0, "markov": 4.0, "cross_dim": 2.0,
+\n# V5.2 unified registry: metadata only; execution remains in this module.
+for _n, _fn in BASE_SIGNALS:
+    register_signal(f"zodiac.{_n}.v1", "v1", "zodiac", f"zodiac base signal: {_n}", _fn)
+DEFAULT_W = {"freq": 3.0, "markov": 4.0, "cross_dim": 2.0,
              "recent": 2.8, "bayes": 1.5, "numcount": 1.5}
 
 # Stacking 超参(876 期调参定稿)
@@ -231,7 +234,21 @@ def _rank_current_stacking_zodiacs(records, k, active_signals=None, window=STACK
     return ranked[:k]
 
 
-def backtest_stacking(records, backtest_n, active_signals=None, window=STACK_WINDOW):\n    """V5.2 strict OOS evaluation; every fold rebuilds the predictor from its training prefix."""\n    if active_signals is None: active_signals = SIGNAL_NAMES\n    key = (len(records), backtest_n, tuple(active_signals), window, "oos-v52")\n    if key in _BT_CACHE: return _BT_CACHE[key]\n    candidates = sorted(set(build_zodiac_map(records).values()))\n    n_test = max(1, min(backtest_n, len(records)-10))\n    def ranker(train, cands):\n        return _rank_current_stacking_zodiacs(train, 6, active_signals, window)\n    report = evaluate_ranked_walk_forward(records, candidates, special_zodiac_of, ranker, initial_train=len(records)-n_test, test_size=n_test, top_k=(3,4,6))\n    hits = {k: [f.hit_at_k[k] for f in report.folds] for k in (3,4,6)}\n    _BT_CACHE[key] = hits\n    return hits\n\ndef clear_cache():
+def backtest_stacking(records, backtest_n, active_signals=None, window=STACK_WINDOW):
+    """V5.2 strict OOS evaluation; every fold rebuilds the predictor from its training prefix."""
+    if active_signals is None: active_signals = SIGNAL_NAMES
+    key = (len(records), backtest_n, tuple(active_signals), window, "oos-v52")
+    if key in _BT_CACHE: return _BT_CACHE[key]
+    candidates = sorted(set(build_zodiac_map(records).values()))
+    n_test = max(1, min(backtest_n, len(records)-10))
+    def ranker(train, cands):
+        return _rank_current_stacking_zodiacs(train, 6, active_signals, window)
+    report = evaluate_ranked_walk_forward(records, candidates, special_zodiac_of, ranker, initial_train=len(records)-n_test, test_size=n_test, top_k=(3,4,6))
+    hits = {k: [f.hit_at_k[k] for f in report.folds] for k in (3,4,6)}
+    _BT_CACHE[key] = hits
+    return hits
+
+def clear_cache():
     _BT_CACHE.clear()
 
 
