@@ -1,0 +1,33 @@
+name: V5.8 Direct Set Prediction
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - core/pair_signal.py
+      - core/set_prediction.py
+      - core/k_specific_policy.py
+      - v58_set_prediction_run.py
+      - tests/test_v58_set_prediction.py
+      - macau_history.json
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Unit tests
+        run: python -m unittest tests/test_v58_set_prediction.py -v
+      - name: Run V5.8.1 historical research
+        run: python v58_set_prediction_run.py --input macau_history.json --output-dir reports/v5.8
+      - name: Upload research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5.8-set-prediction
+          path: reports/v5.8/
