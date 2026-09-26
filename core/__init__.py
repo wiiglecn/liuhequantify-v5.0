@@ -7,3 +7,4 @@ from .signal_metrics import *
 from .calibration import *
 from .signal_analysis import *
 from .ensemble_weighting import *
+from .v54_research import *
