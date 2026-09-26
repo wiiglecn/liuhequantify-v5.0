@@ -1,0 +1,26 @@
+name: V5.6 Regime Detection Adaptive Ensemble
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Run V5.6
+        run: python v56_regime_adaptive_run.py --input macau_history.json --output-dir reports/v5.6
+      - name: Upload research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5.6-regime-adaptive
+          path: reports/v5.6/
