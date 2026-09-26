@@ -70,7 +70,19 @@ def evaluate_nested(records,candidates,actual_fn,policies,config=None):
     counts={name:sum(1 for f in folds if f.selected_policy==name) for name in policies}
     return NestedReport(n,holdout_start,counts,rates,base,{k:rates[k]-base[k] for k in cfg.top_k},folds,True)
 
-def evaluate_final_holdout(records,candidates,actual_fn,predictor,train_end):
-    if train_end>=len(records): raise ValueError("train_end must be before holdout")
-    p=normalize_probabilities(predictor(records[:train_end],candidates),candidates)
-    return {"index":train_end,"actual":actual_fn(records[train_end]),"ranking":ranking_from_probabilities(p)}
+def evaluate_final_holdout(records,candidates,actual_fn,predictor,holdout_start):
+    """Score a sealed holdout using one frozen training prefix.
+    predictor is called exactly once, so no holdout observation can update the model.
+    """
+    if holdout_start<=0 or holdout_start>=len(records):
+        raise ValueError("holdout_start must split the dataset")
+    p=normalize_probabilities(predictor(records[:holdout_start],candidates),candidates)
+    rank=ranking_from_probabilities(p)
+    actuals=[actual_fn(r) for r in records[holdout_start:]]
+    return {
+        "holdout_start":holdout_start,
+        "n":len(actuals),
+        "ranking":rank,
+        "hit_at_k":{k:sum(a in set(rank[:k]) for a in actuals)/len(actuals) for k in (1,3,6)},
+        "frozen_training_size":holdout_start,
+    }
