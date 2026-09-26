@@ -16,21 +16,22 @@ def combine_signal_probabilities(signal_predictions:Mapping[str,Mapping],candida
     return normalize_probabilities(out,candidates)
 
 def fit_logloss_weights(rows:Sequence[tuple[Mapping[str,Mapping],object]],candidates:Sequence,
-                        signal_names:Sequence[str],steps:int=300,lr:float=0.05)->dict:
-    names=list(signal_names)
+                        signal_names:Sequence[str],steps:int=120,lr:float=0.08)->dict:
+    """Projected-gradient simplex optimizer with an analytic logloss gradient.
+    This keeps V5.4.2 nested runs tractable on thousands of OOS folds.
+    """
+    names=list(signal_names); cands=list(candidates)
     if not names:return {}
     weights={n:1.0/len(names) for n in names}
     for _ in range(max(1,steps)):
         grad={n:0.0 for n in names}
         for signal_predictions,actual in rows:
-            base=multiclass_logloss(combine_signal_probabilities(signal_predictions,candidates,weights),actual)
-            delta=1e-4
+            raw=combine_signal_probabilities(signal_predictions,cands,weights)
+            pa=max(1e-12,float(raw.get(actual,0.0)))
             for n in names:
-                trial=dict(weights);trial[n]+=delta;trial=normalize_weights(trial)
-                trial_loss=multiclass_logloss(combine_signal_probabilities(signal_predictions,candidates,trial),actual)
-                grad[n]+=(trial_loss-base)/delta
+                grad[n] += -float(signal_predictions.get(n,{}).get(actual,0.0))/pa
         scale=1.0/max(1,len(rows))
-        for n in names:weights[n]=max(0.0,weights[n]-lr*grad[n]*scale)
+        for n in names: weights[n]=max(0.0,weights[n]-lr*grad[n]*scale)
         weights=normalize_weights(weights)
     return weights
 
