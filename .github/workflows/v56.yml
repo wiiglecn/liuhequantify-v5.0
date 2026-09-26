@@ -4,6 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches: [dev]
+    paths:
+      - core/regime_detection.py
+      - core/adaptive_ensemble.py
+      - v56_regime_adaptive_run.py
+      - tests/test_v56_regime_adaptive.py
+      - macau_history.json
 
 jobs:
   research:
