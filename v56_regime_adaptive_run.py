@@ -39,11 +39,11 @@ def evaluate_layer(name,folds,signals,candidates,args):
             details.append({"status":"ok","n_history":min(j,args.context_window*4),"regime":regimes[-1]})
     res=evaluate_adaptive(usable,candidates,signals,regimes,AdaptiveConfig(decay=args.decay,shrinkage=args.shrinkage,min_weight=args.min_weight),args.min_history,args.final_holdout)
     def summarize(rows):
-        return metric_summary(rows,top_k=(1,3,6))
+        return metric_summary(rows,top_k=(1,3,4,6,20))
     outer=res["outer_rows"];hold=res["holdout_rows"];om=summarize(outer);hm=summarize(hold)
-    base={str(k):min(1.0,k/max(1,len(candidates))) for k in (1,3,6)}
+    base={str(k):min(1.0,k/max(1,len(candidates))) for k in (1,3,4,6,20)}
     pv={str(k):binomial_two_sided_pvalue(int(round(om.get("hit_at_"+str(k),0)*len(outer))),len(outer),base[str(k)]) for k in (1,3,6)}
-    mets=("hit_at_1","hit_at_3","hit_at_6","logloss","brier","ece","information_gain")
+    mets=("hit_at_1","hit_at_3","hit_at_4","hit_at_6","hit_at_20","logloss","brier","ece","information_gain")
     return {"layer":name,"folds":len(usable),"regime_count":len(set(regimes)),"regimes":regimes,"regime_details":details,
             "outer":om,"outer_n":len(outer),"outer_p_values":pv,
             "outer_ci":{m:bootstrap_metric_ci(outer,m,rounds=800) for m in mets},
@@ -71,7 +71,7 @@ def main():
             o=r["outer"];h=r["final_holdout"]
             f.write("## "+name+"\n")
             f.write("folds: "+str(r["folds"])+"; regimes: "+str(r["regime_count"])+"\n")
-            f.write("outer Hit@1/3/6: %.4f / %.4f / %.4f\n\n"%(o.get("hit_at_1",0),o.get("hit_at_3",0),o.get("hit_at_6",0)))
-            f.write("holdout Hit@1/3/6: %.4f / %.4f / %.4f\n\n"%(h.get("hit_at_1",0),h.get("hit_at_3",0),h.get("hit_at_6",0)))
+            f.write("outer Hit@1/3/4/6/20: %.4f / %.4f / %.4f / %.4f / %.4f\n\n"%(o.get("hit_at_1",0),o.get("hit_at_3",0),o.get("hit_at_4",0),o.get("hit_at_6",0),o.get("hit_at_20",0)))
+            f.write("holdout Hit@1/3/4/6/20: %.4f / %.4f / %.4f / %.4f / %.4f\n\n"%(h.get("hit_at_1",0),h.get("hit_at_3",0),h.get("hit_at_4",0),h.get("hit_at_6",0),h.get("hit_at_20",0)))
     print(json.dumps({"version":"V5.6","history_count":len(records),"layers":list(layers),"output_dir":a.output_dir},ensure_ascii=False))
 if __name__=="__main__":main()
