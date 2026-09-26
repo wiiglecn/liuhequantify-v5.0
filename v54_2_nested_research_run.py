@@ -8,7 +8,7 @@ inner OOS folds; the final holdout is scored with one frozen policy.
 """
 import argparse,json,os
 from data_fetcher import Record
-from core.nested_signal_research import NestedResearchConfig,evaluate_nested_folds
+from core.nested_signal_research import NestedResearchConfig,evaluate_nested_folds\nfrom core.research_result_engine import build_result_report
 
 def load_json(path):
     with open(path,encoding="utf-8") as f: raw=json.load(f)
@@ -73,7 +73,7 @@ def main():
     for name,(folds,sigs,cands) in dimension_layers(records).items():
         report["layers"]["dimension."+name]=run("dimension."+name,folds,sigs,cands,cfg)
     os.makedirs(os.path.dirname(args.output) or ".",exist_ok=True)
-    with open(args.output,"w",encoding="utf-8") as f: json.dump(report,f,ensure_ascii=False,indent=2)
+    with open(args.output,"w",encoding="utf-8") as f: json.dump(report,f,ensure_ascii=False,indent=2,default=str)
     print(json.dumps({"output":args.output,"history_count":len(records),
                       "layers":list(report["layers"])},ensure_ascii=False))
 if __name__=="__main__": main()
