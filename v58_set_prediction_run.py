@@ -66,12 +66,12 @@ def main():
     with open(os.path.join(a.output_dir,"report.md"),"w",encoding="utf-8") as f:
         f.write("# V5.8.1 Direct Set Prediction\n\nLeakage-safe historical OOS research. K-specific policy; final holdout is frozen.\n\n")
         for name,r in layers.items():
-            f.write("## "+name+"\n\n| Target | Outer Hit@K | Holdout Hit@K | Random baseline | p-value | Horizon | Pair | Diversity | Gain | Structure |\n|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n")
+            f.write("## "+name+"\n\n| Target | Outer Hit@K | Holdout Hit@K | Random baseline | p-value | Horizon | Pair | Diversity | Gain | Structure |\n|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n")
             for ks,t in r["targets"].items():
                 p=t["final_policy"]
-                f.write("| %s | %.4f | %.4f | %.4f | %.4f | %s | %.3f | %.3f |\n" %
+                f.write("| %s | %.4f | %.4f | %.4f | %.4f | %s | %.3f | %.3f | %.4f | %s |\n" %
                     (ks,t["outer"].get("hit_at_"+ks,0),t["final_holdout"].get("hit_at_"+ks,0),
                      t["outer_baseline"],t["outer_p_value"],p["horizon"],p["lambda_pair"],p["lambda_diversity"],p["gain"],p["structure_enabled"]))
             f.write("\n")
-    print(json.dumps({"version":"V5.8.1","history_count":len(records),"layers":list(layers),"output_dir":a.output_dir},ensure_ascii=False))
+    print(json.dumps({"version":"V5.8.2","history_count":len(records),"layers":list(layers),"output_dir":a.output_dir},ensure_ascii=False))
 if __name__=="__main__": main()
