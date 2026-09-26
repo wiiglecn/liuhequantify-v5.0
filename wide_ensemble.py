@@ -90,6 +90,14 @@ def _signal_uniform():
     return {n: 1.0 for n in ALL_NUMS}
 
 
+# V5.2 unified signal registry
+for _n, _fn in {
+    "freq": _signal_freq, "gap": _signal_gap, "markov": _signal_markov,
+    "recent": _signal_recent, "zodiac": _signal_zodiac, "uniform": _signal_uniform,
+}.items():
+    register_signal(f"wide.{_n}.v1", "v1", "wide", f"wide base signal: {_n}", _fn)
+
+
 def _compute_fold_probs(records):
     """计算一折的各信号归一化概率。返回 (prob_dict, None)。"""
     report = build_report(records)
@@ -311,4 +319,4 @@ if __name__ == "__main__":
     print(f"20颗大集合 Stacking: 近{n}期命中 {h/n*100:.1f}% (基线{base:.1f}% lift{h/n*100-base:+.1f}%)")
     nums = predict_stacking_numbers(records, 20)
     print(f"预测20颗: {sorted(nums)}")
-    print(f"耗时 {time.time()-t0:.1f}s")\n\n# V5.2 registry registration occurs after all signal functions are defined.\nfor _n, _fn in {\n    "freq": _signal_freq, "gap": _signal_gap, "markov": _signal_markov,\n    "recent": _signal_recent, "zodiac": _signal_zodiac, "uniform": _signal_uniform,\n}.items():\n    register_signal(f"wide.{_n}.v1", "v1", "wide", f"wide base signal: {_n}", _fn)\n
+    print(f"耗时 {time.time()-t0:.1f}s")
