@@ -19,7 +19,7 @@ class V58SetPredictionTest(unittest.TestCase):
         r=evaluate_k_policies(folds,[1,2,3,4],["a","b"],(3,4),
                               KPolicyConfig(windows=(30,60),validation_size=10,min_history=30),
                               30,10)
-        self.assertTrue(r["holdout_isolated"])
+        self.assertTrue(r["holdout_isolated"])\n        for k in (3,4):\n            self.assertIn("gain", r["final_policy"][k])\n            self.assertIn("structure_enabled", r["final_policy"][k])
         self.assertEqual(len(r["holdout_by_k"][3]),10)
         self.assertEqual(len(r["outer_by_k"][4]),60)
 if __name__=="__main__": unittest.main()
