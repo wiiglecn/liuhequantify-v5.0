@@ -13,7 +13,7 @@ This module contains no model fitting and never mutates a policy.
 from math import sqrt
 from collections import defaultdict
 from .multiple_testing import benjamini_hochberg, bonferroni
-from .signal_metrics import metric_summary, multiclass_logloss, multiclass_brier
+from .signal_metrics import metric_summary, multiclass_logloss, multiclass_brier, expected_calibration_error, information_gain
 
 def _mean(xs):
     return sum(xs)/len(xs) if xs else 0.0
@@ -41,6 +41,7 @@ def metric_ci(rows, top_k=(1,3,6), iterations=1000):
     for k in top_k:
         series[f"hit_at_{k}"]=[float(a in sorted(p,key=p.get,reverse=True)[:k]) for p,a in rows]
     out["bootstrap_ci"]={m:bootstrap_mean_ci(v,iterations=iterations) for m,v in series.items()}
+    out["reliability"]={"ece":expected_calibration_error(rows),"mean_information_gain":_mean([information_gain(p,a) for p,a in rows])}
     return out
 
 def stability_by_period(rows, periods, top_k=(1,3,6)):
