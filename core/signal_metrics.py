@@ -75,7 +75,7 @@ def metric_summary(rows:Iterable[tuple[Mapping[Any,float],Any]],top_k=(1,3,6))->
         out[f"hit_at_{k}"]=sum(hit_at_k(sorted(p,key=p.get,reverse=True),a,k) for p,a in rows)/n
     return out
 
-def bootstrap_metric_ci(rows, metric, rounds=1000, seed=20260926, confidence=.95):
+def bootstrap_metric_ci(rows, metric, rounds=1000, seed=20260926, confidence=.95, top_k=(1,3,6)):
     """Non-parametric bootstrap CI for an OOS metric."""
     rows=list(rows); n=len(rows)
     if not rows:
@@ -84,7 +84,7 @@ def bootstrap_metric_ci(rows, metric, rounds=1000, seed=20260926, confidence=.95
     rng=random.Random(seed); vals=[]
     for _ in range(max(1,rounds)):
         sample=[rows[rng.randrange(n)] for _ in range(n)]
-        vals.append(metric_summary(sample).get(metric,0.0))
+        vals.append(metric_summary(sample,top_k=top_k).get(metric,0.0))
     vals.sort()
     alpha=(1.0-confidence)/2.0
     lo=vals[min(len(vals)-1,max(0,int(alpha*len(vals))))]
