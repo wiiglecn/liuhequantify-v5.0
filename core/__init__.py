@@ -22,3 +22,5 @@ from .pair_signal import *
 from .set_prediction import *
 from .k_specific_policy import *
 from .residual_alpha import *
+
+from .v5841_statistical_hardening import HardeningConfig,HardenedFeature,rolling_oos,discover
