@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """V5.8.4 residual feature discovery runner."""
 import argparse,json,os
+from dataclasses import asdict
 from data_fetcher import Record
 from core.residual_features import build_feature_rows,FEATURE_NAMES
 from core.residual_feature_discovery import FeatureDiscoveryConfig,discover
