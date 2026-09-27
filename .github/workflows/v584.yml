@@ -30,3 +30,12 @@ jobs:
         with:
           name: v5.8-4-residual-features
           path: reports/v5.8.4/
+      - name: Unit tests V5.8.4.1 statistical hardening
+        run: python -m unittest tests/test_v5841_statistical_hardening.py -v
+      - name: Run V5.8.4.1 full historical statistical hardening
+        run: python v5841_statistical_hardening_run.py --input macau_history.json --output-dir reports/v5.8.4.1
+      - name: Upload V5.8.4.1 research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5.8-4-1-statistical-hardening
+          path: reports/v5.8.4.1/
