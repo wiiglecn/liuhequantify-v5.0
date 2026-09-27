@@ -1,0 +1,33 @@
+name: V5.8.4.1 Statistical Hardening
+on:
+  push:
+    branches: [dev]
+    paths:
+      - core/v5841_statistical_hardening.py
+      - v5841_statistical_hardening_run.py
+      - tests/test_v5841_statistical_hardening.py
+      - docs/V5.8.4.1_STATISTICAL_HARDENING.md
+      - core/k_specific_policy.py
+      - core/residual_features.py
+      - macau_history.json
+  workflow_dispatch:
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Unit tests
+        run: python -m unittest tests/test_v5841_statistical_hardening.py -v
+      - name: Historical statistical hardening
+        run: python v5841_statistical_hardening_run.py --input macau_history.json --output-dir reports/v5.8.4.1
+      - name: Upload research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5.8-4-1-statistical-hardening
+          path: reports/v5.8.4.1/
