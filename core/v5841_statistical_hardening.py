@@ -55,25 +55,26 @@ def _fit(train,feature,l2):
     if sd<1e-9: sd=1.0
     z=(x-mu)/sd
     bp=np.clip(base,1e-6,1-1e-6)
-    b0=float(np.log(bp/(1.0-bp)).mean())
     w=0.0
-    # Intercept is initialized from the frozen baseline probability surface;
-    # only the residual coefficient is regularized and optimized on TRAIN.
+    # The baseline logit is an observation-level frozen offset. Only the
+    # residual coefficient is learned on TRAIN.
+    offset=np.log(bp/(1.0-bp))
     for _ in range(60):
-        p=np.asarray([_sigmoid(b0+w*xx) for xx in z])
+        p=np.asarray([_sigmoid(oo+w*xx) for oo,xx in zip(offset,z)])
         g=float(np.sum((y-p)*z)-l2*w)
         h=float(np.sum(p*(1-p)*z*z)+l2)
         nw=w+g/max(h,1e-9)
         if abs(nw-w)<1e-8: break
         w=nw
-    return {"mu":mu,"sd":sd,"intercept":b0,"weight":w}
+    return {"mu":mu,"sd":sd,"weight":w}
 
 def _score(rows,feature,params):
     x=np.asarray([float(r.get(feature,0.0)) for r in rows],dtype=float)
     y=np.asarray([float(r["hit"]) for r in rows],dtype=float)
     bp=np.clip(np.asarray([float(r["base_prob"]) for r in rows],dtype=float),1e-6,1-1e-6)
     z=(x-params["mu"])/params["sd"]
-    p=np.asarray([_sigmoid(params["intercept"]+params["weight"]*xx) for xx in z])
+    offset=np.log(bp/(1.0-bp))
+    p=np.asarray([_sigmoid(oo+params["weight"]*xx) for oo,xx in zip(offset,z)])
     base_ll=-(y*np.log(bp)+(1-y)*np.log(1-bp))
     model_ll=-(y*np.log(np.clip(p,1e-6,1-1e-6))+(1-y)*np.log(np.clip(1-p,1e-6,1-1e-6)))
     return base_ll-model_ll
