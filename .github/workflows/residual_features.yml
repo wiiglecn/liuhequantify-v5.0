@@ -5,9 +5,9 @@ on:
     paths:
       - core/residual_features.py
       - core/residual_feature_discovery.py
-      - v584_residual_feature_run.py
-      - tests/test_v584_residual_features.py
-      - docs/V5.8.4_RESIDUAL_FEATURES.md
+      - residual_feature_run.py
+      - tests/test_residual_features.py
+      - docs/RESIDUAL_FEATURES.md
       - macau_history.json
   workflow_dispatch:
 jobs:
@@ -22,18 +22,18 @@ jobs:
       - name: Install dependencies
         run: if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Unit tests
-        run: python -m unittest tests/test_v584_residual_features.py -v
+        run: python -m unittest tests/test_residual_features.py -v
       - name: Run V5.8.4 historical feature discovery
-        run: python v584_residual_feature_run.py --input macau_history.json --output-dir reports/v5.8.4
+        run: python residual_feature_run.py --input macau_history.json --output-dir reports/v5.8.4
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
           name: v5.8-4-residual-features
           path: reports/v5.8.4/
       - name: Unit tests V5.8.4.1 statistical hardening
-        run: python -m unittest tests/test_v5841_statistical_hardening.py -v
+        run: python -m unittest tests/test_statistical_hardening.py -v
       - name: Run V5.8.4.1 full historical statistical hardening
-        run: python v5841_statistical_hardening_run.py --input macau_history.json --output-dir reports/v5.8.4.1
+        run: python statistical_hardening_run.py --input macau_history.json --output-dir reports/v5.8.4.1
       - name: Upload V5.8.4.1 research report
         uses: actions/upload-artifact@v4
         with:
