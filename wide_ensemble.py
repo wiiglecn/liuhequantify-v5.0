@@ -225,7 +225,7 @@ _BT_CACHE = {}
 def predict_stacking_numbers(records, k=20, active_signals=None,
                               window=STACK_WINDOW, ne=STACK_N_EST,
                               md=STACK_MAX_DEPTH, lr=STACK_LR):
-    """预测下一期 top-k 号码: 用全部历史训练 GBDT, 预测当前信号特征。
+    """预测下一期 top-k 号码: 用最近 window 个历史 OOS folds 训练 GBDT, 预测当前信号特征。
 
     数据不足(历史 < 60 期)降级为线性加权。返回号码列表(未排序)。
     """
@@ -238,8 +238,12 @@ def predict_stacking_numbers(records, k=20, active_signals=None,
         return ranked[:k]
     n_folds = max(1, len(records) - 10)
     folds = precompute_folds(records, n_folds)
+    # STACK_WINDOW 必须真正约束元学习器训练样本；否则旧 regime 会淹没近期信号。
+    train_end = len(folds) - 1
+    train_start = max(0, train_end - window)
+    train_folds = folds[train_start:train_end]
     feats, targets = [], []
-    for f in folds:
+    for f in train_folds:
         for num in ALL_NUMS:
             feats.append([f["prob"][name].get(num, 0.0) for name in active_signals])
             is_actual = 1.0 if num == f["actual"] else 0.0
