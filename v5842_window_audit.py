@@ -109,3 +109,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# CI trigger: execute the real 999-record OOS window audit on dev.
