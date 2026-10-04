@@ -1,0 +1,20 @@
+name: Repository Integrity
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Filename and stale-reference checks
+        run: python tools/repository_integrity.py
+      - name: Compile Python sources
+        run: python -m compileall -q .
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
