@@ -4,9 +4,9 @@ on:
     branches: [dev]
     paths:
       - core/residual_alpha.py
-      - v583_residual_alpha_run.py
-      - tests/test_v583_residual_alpha.py
-      - docs/V5.8.3_RESIDUAL_ALPHA.md
+      - residual_alpha_run.py
+      - tests/test_residual_alpha.py
+      - docs/RESIDUAL_ALPHA.md
       - macau_history.json
   workflow_dispatch:
 jobs:
@@ -22,9 +22,9 @@ jobs:
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Unit tests
-        run: python -m unittest tests/test_v583_residual_alpha.py -v
+        run: python -m unittest tests/test_residual_alpha.py -v
       - name: Run V5.8.3 historical residual-alpha research
-        run: python v583_residual_alpha_run.py --input macau_history.json --output-dir reports/v5.8.3 --horizons 60,120 --residual-lambdas 0.10,0.20,0.30 --bootstrap-rounds 200
+        run: python residual_alpha_run.py --input macau_history.json --output-dir reports/v5.8.3 --horizons 60,120 --residual-lambdas 0.10,0.20,0.30 --bootstrap-rounds 200
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
