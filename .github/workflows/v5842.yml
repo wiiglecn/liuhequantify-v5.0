@@ -20,6 +20,8 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Unit tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
       - name: Rolling window OOS audit
         run: python v5842_window_audit.py --input macau_history.json --output-dir reports/v5.8.4.2
       - name: Upload audit report
