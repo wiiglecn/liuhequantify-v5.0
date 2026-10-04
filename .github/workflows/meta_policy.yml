@@ -4,11 +4,11 @@ on:
   push:
     branches: [dev]
     paths:
-      - core/v57_meta_policy.py
+      - core/meta_policy.py
       - core/regime_detection.py
       - core/signal_metrics.py
-      - v57_meta_policy_run.py
-      - tests/test_v57_meta_policy.py
+      - meta_policy_run.py
+      - tests/test_meta_policy.py
       - macau_history.json
 jobs:
   research:
@@ -23,9 +23,9 @@ jobs:
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Unit tests
-        run: python -m unittest tests/test_v57_meta_policy.py -v
+        run: python -m unittest tests/test_meta_policy.py -v
       - name: Run V5.7 historical research
-        run: python v57_meta_policy_run.py --input macau_history.json --output-dir reports/v5.7
+        run: python meta_policy_run.py --input macau_history.json --output-dir reports/v5.7
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
