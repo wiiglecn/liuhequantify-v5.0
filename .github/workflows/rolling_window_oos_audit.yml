@@ -1,0 +1,32 @@
+name: Rolling Window OOS Audit
+on:
+  push:
+    branches: [dev]
+    paths:
+      - zodiac_ensemble.py
+      - wide_ensemble.py
+      - window_audit.py
+      - macau_history.json
+      - dimensions.py
+      - .github/workflows/rolling_window_oos_audit.yml
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: V5.8 regression tests
+        run: python -m unittest discover -s tests -p "test_v584*.py" -v
+      - name: Rolling window OOS audit
+        run: python window_audit.py --input macau_history.json --output-dir reports/v5.8.4.2
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: rolling-window-oos-audit
+          path: reports/v5.8.4.2/
