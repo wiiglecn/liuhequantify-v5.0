@@ -8,6 +8,7 @@ on:
       - v5842_window_audit.py
       - macau_history.json
       - dimensions.py
+      - .github/workflows/v5842.yml
   workflow_dispatch:
 jobs:
   audit:
