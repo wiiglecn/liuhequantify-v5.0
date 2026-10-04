@@ -4,7 +4,7 @@ import argparse,json,os
 from dataclasses import asdict
 from data_fetcher import Record
 from core.residual_features import build_feature_rows,FEATURE_NAMES
-from core.v5841_statistical_hardening import HardeningConfig,discover
+from core.statistical_hardening import HardeningConfig,discover
 from core.k_specific_policy import KPolicyConfig,fit_k_policy
 from core.ensemble_weighting import combine_signal_probabilities
 
