@@ -6,7 +6,7 @@
 最终采用 Stacking(GBDT 元学习器): 用各 base 信号对每个生肖的归一化概率作为特征,
 真实生肖作为标签, GBDT 学习非线性映射, 输出 P(命中), 取 top-k。
 
-876 期 walk-forward 实测: 六肖 50.9%(基线50%, +0.9), 优于线性加权 46.7%。
+历史研究结果以当前数据集的独立 OOS 运行报告为准；本模块不在源码中固化未经当前版本重新验证的命中率。
 """
 import math
 import numpy as np
@@ -37,9 +37,7 @@ STACK_WINDOW = 150
 STACK_N_EST = 80
 STACK_MAX_DEPTH = 3
 STACK_LR = 0.1
-# 温度缩放: GBDT 过度自信(top3 概率顶到0.9999), T>1 平滑概率分布,
-# 让四肖第4名贡献更多命中(实测 T=3 四肖+1.6% 六肖+1.7%)
-STACK_TEMP = 3.0
+# 二分类 GBDT 的温度缩放是单调变换，不改变按正类概率排序的名次。\n# 因而不把它作为命中率优化项，避免把“概率校准”误认为“排序提升”。\nSTACK_TEMP = 1.0
 
 
 def _compute_signals(train, zmap):
@@ -108,12 +106,6 @@ def _rank_stacking(folds, fold_idx, active_signals=None,
     clf.fit(feats, labels)
     test_X = [[fold["prob"][name].get(z, 0.0) for name in active_signals] for z in all_z]
     proba = clf.predict_proba(test_X)
-    if STACK_TEMP != 1.0:
-        logit = np.log(np.clip(proba, 1e-9, 1 - 1e-9))
-        logit = logit / STACK_TEMP
-        logit = logit - logit.max(axis=1, keepdims=True)
-        proba = np.exp(logit)
-        proba = proba / proba.sum(axis=1, keepdims=True)
     pos_col = list(clf.classes_).index(1) if 1 in clf.classes_ else 0
     p_pos = proba[:, pos_col] if proba.ndim == 2 else proba
     return [z for _, z in sorted(zip(p_pos, all_z), reverse=True)]
@@ -187,8 +179,11 @@ def _rank_current_stacking_zodiacs(records, k, active_signals=None, window=STACK
         return _build_zodiac_six(records, None, zmap)[:k]
     n_folds = max(1, len(records) - 10)
     folds = precompute_folds(records, n_folds)
+    train_end = len(folds) - 1
+    train_start = max(0, train_end - window)
+    train_folds = folds[train_start:train_end]
     feats, labels = [], []
-    for f in folds:
+    for f in train_folds:
         for z in f["all_z"]:
             feats.append([f["prob"][name].get(z, 0.0) for name in active_signals])
             labels.append(1 if z == f["actual"] else 0)
@@ -211,12 +206,12 @@ def _rank_current_stacking_zodiacs(records, k, active_signals=None, window=STACK
 def predict_stacking_zodiacs(records, k, active_signals=None,
                               window=STACK_WINDOW, ne=STACK_N_EST,
                               md=STACK_MAX_DEPTH, lr=STACK_LR):
-    """预测下一期 top-k 生肖: 用全部历史训练 GBDT, 预测当前信号特征。
+    """预测下一期 top-k 生肖: 用最近 window 个历史 OOS folds 训练 GBDT，预测当前信号特征。
 
     流程:
-      1. 构建 walk-forward 折(全部历史)作为 GBDT 训练集
-      2. 当前信号特征 = 全部 records 的各信号归一化概率
-      3. GBDT 输出每个生肖 P(命中), 取 top-k
+      1. 构建 walk-forward 折，严格只使用当前时点之前的历史
+      2. 元学习器训练集受 window 约束，避免旧 regime 混入\n      3. 当前信号特征 = 全部 records 的各信号归一化概率
+      4. GBDT 输出每个生肖 P(命中), 取 top-k
     数据不足(历史 < 60 期)降级为号码数先验(_zodiac_six_scores)。
     """
     if active_signals is None:
@@ -226,9 +221,12 @@ def predict_stacking_zodiacs(records, k, active_signals=None,
         return _build_zodiac_six(records, None, build_zodiac_map(records))[:k]
     n_folds = max(1, len(records) - 10)
     folds = precompute_folds(records, n_folds)
-    # 训练数据: 全部折
+    # 训练数据只取最近 window 个历史 OOS folds，避免旧 regime 淹没近期信号。
+    train_end = len(folds) - 1
+    train_start = max(0, train_end - window)
+    train_folds = folds[train_start:train_end]
     feats, labels = [], []
-    for f in folds:
+    for f in train_folds:
         for z in f["all_z"]:
             feats.append([f["prob"][name].get(z, 0.0) for name in active_signals])
             labels.append(1 if z == f["actual"] else 0)
