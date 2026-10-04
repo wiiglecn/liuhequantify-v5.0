@@ -1,0 +1,51 @@
+# V5.8.4.1 Statistical Hardening
+
+## Purpose
+
+V5.8.4 discovered candidate residual features from the signal probability
+surface, but its validation implementation refit the logistic feature
+coefficient on the validation block. V5.8.4.1 removes that leakage and turns
+the experiment into a strict rolling OOS statistical test.
+
+## Protocol
+
+For every target K and every candidate feature:
+
+1. Build the V5.8.2 K-specific baseline using only history before the target.
+2. Convert the baseline top-K probability mass into a frozen baseline hit
+   probability.
+3. At each rolling origin, fit the residual coefficient on TRAIN only.
+4. Freeze feature mean, standard deviation and coefficient.
+5. Score the following VALIDATION block without refitting.
+6. Concatenate all validation blocks into one OOS series.
+7. Compare baseline LogLoss with residual-layer LogLoss using paired
+   pointwise gains.
+8. Report an exact two-sided sign-test p-value.
+9. Report a percentile bootstrap 95% CI for mean OOS gain.
+10. Report positive-fold and positive-block stability.
+11. Apply Benjamini-Hochberg and Bonferroni correction across all feature
+    candidates for each target K.
+
+## Acceptance gate
+
+A feature is accepted only when all gates pass:
+
+- mean OOS gain >= 0.003;
+- bootstrap 95% CI lower bound > 0;
+- BH q <= 0.10;
+- Bonferroni-adjusted p <= 0.05;
+- at least 4 rolling validation blocks;
+- at least 60% of validation blocks have positive mean gain.
+
+This is deliberately conservative. A feature that looks promising but fails
+multiple-testing or stability control remains a research candidate rather
+than a production signal.
+
+## Research boundary
+
+The test is historical research only. It does not establish future
+predictability, causal structure, or a trading/lottery advantage. The final
+60 historical draws remain isolated from feature selection and validation.
+
+
+CI trigger: historical research execution requested on 2026-09-27.
