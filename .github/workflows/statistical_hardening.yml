@@ -3,10 +3,10 @@ on:
   push:
     branches: [dev]
     paths:
-      - core/v5841_statistical_hardening.py
-      - v5841_statistical_hardening_run.py
-      - tests/test_v5841_statistical_hardening.py
-      - docs/V5.8.4.1_STATISTICAL_HARDENING.md
+      - core/statistical_hardening.py
+      - statistical_hardening_run.py
+      - tests/test_statistical_hardening.py
+      - docs/STATISTICAL_HARDENING.md
       - core/k_specific_policy.py
       - core/residual_features.py
       - macau_history.json
@@ -23,9 +23,9 @@ jobs:
       - name: Install dependencies
         run: if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Unit tests
-        run: python -m unittest tests/test_v5841_statistical_hardening.py -v
+        run: python -m unittest tests/test_statistical_hardening.py -v
       - name: Historical statistical hardening
-        run: python v5841_statistical_hardening_run.py --input macau_history.json --output-dir reports/v5.8.4.1
+        run: python statistical_hardening_run.py --input macau_history.json --output-dir reports/v5.8.4.1
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
