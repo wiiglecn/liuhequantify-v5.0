@@ -7,8 +7,8 @@ on:
       - core/pair_signal.py
       - core/set_prediction.py
       - core/k_specific_policy.py
-      - v58_set_prediction_run.py
-      - tests/test_v58_set_prediction.py
+      - set_prediction_run.py
+      - tests/test_set_prediction.py
       - macau_history.json
 jobs:
   research:
@@ -23,9 +23,9 @@ jobs:
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Unit tests
-        run: python -m unittest tests/test_v58_set_prediction.py -v
+        run: python -m unittest tests/test_set_prediction.py -v
       - name: Run V5.8.2 K-specific meta-policy historical research
-        run: python v58_set_prediction_run.py --input macau_history.json --output-dir reports/v5.8
+        run: python set_prediction_run.py --input macau_history.json --output-dir reports/v5.8
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
