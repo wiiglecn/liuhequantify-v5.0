@@ -7,8 +7,8 @@ on:
     paths:
       - core/regime_detection.py
       - core/adaptive_ensemble.py
-      - v56_regime_adaptive_run.py
-      - tests/test_v56_regime_adaptive.py
+      - regime_adaptive_run.py
+      - tests/test_regime_adaptive.py
       - macau_history.json
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run V5.6
-        run: python v56_regime_adaptive_run.py --input macau_history.json --output-dir reports/v5.6
+        run: python regime_adaptive_run.py --input macau_history.json --output-dir reports/v5.6
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
