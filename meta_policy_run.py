@@ -4,7 +4,7 @@
 import argparse,json,os
 from data_fetcher import Record
 from core.regime_detection import RegimeDetector,RegimeConfig
-from core.v57_meta_policy import HorizonConfig,evaluate_meta
+from core.meta_policy import HorizonConfig,evaluate_meta
 from core.signal_metrics import metric_summary,bootstrap_metric_ci,binomial_two_sided_pvalue
 
 def load_json(path):
