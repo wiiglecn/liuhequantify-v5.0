@@ -6,8 +6,8 @@ on:
     branches: [dev]
     paths:
       - core/signal_discovery.py
-      - v55_1_signal_discovery_run.py
-      - tests/test_v551_signal_discovery.py
+      - signal_discovery_run.py
+      - tests/test_signal_discovery.py
       - macau_history.json
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
         run: |
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run V5.5.1
-        run: python v55_1_signal_discovery_run.py --input macau_history.json --output-dir reports/v5.5.1
+        run: python signal_discovery_run.py --input macau_history.json --output-dir reports/v5.5.1
       - name: Upload research report
         uses: actions/upload-artifact@v4
         with:
