@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from core.v5841_statistical_hardening import HardeningConfig,rolling_oos,discover
+from core.statistical_hardening import HardeningConfig,rolling_oos,discover
 
 class V5841Test(unittest.TestCase):
     def _rows(self,n=240):
