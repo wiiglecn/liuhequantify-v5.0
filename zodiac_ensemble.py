@@ -96,7 +96,7 @@ def _rank_stacking(folds, fold_idx, active_signals=None,
     fold = folds[fold_idx]
     all_z = fold["all_z"]
     if len(feats) < 50 or sum(labels) < 3:
-        return _rank_bma(folds, fold_idx, active_signals)
+        return _rank_bma(folds, fold_idx, active_signals, window=window)
     try:
         from sklearn.ensemble import GradientBoostingClassifier
     except ImportError:
@@ -111,10 +111,11 @@ def _rank_stacking(folds, fold_idx, active_signals=None,
     return [z for _, z in sorted(zip(p_pos, all_z), reverse=True)]
 
 
-def _bma_weights(folds, fold_idx, active, decay=0.95, min_w=0.05):
+def _bma_weights(folds, fold_idx, active, decay=0.95, min_w=0.05, window=None):
     ns = len(active)
     lw = np.zeros(ns)
-    for t in range(fold_idx):
+    start = 0 if window is None else max(0, fold_idx - window)
+    for t in range(start, fold_idx):
         df = decay ** (fold_idx - 1 - t)
         actual = folds[t]["actual"]
         for j, name in enumerate(active):
@@ -127,8 +128,8 @@ def _bma_weights(folds, fold_idx, active, decay=0.95, min_w=0.05):
     return w / w.sum()
 
 
-def _rank_bma(folds, fold_idx, active, **kw):
-    w = _bma_weights(folds, fold_idx, active)
+def _rank_bma(folds, fold_idx, active, window=None, **kw):
+    w = _bma_weights(folds, fold_idx, active, window=window)
     fold = folds[fold_idx]
     all_z = fold["all_z"]
     comb = {z: 0.0 for z in all_z}
@@ -188,7 +189,7 @@ def _rank_current_stacking_zodiacs(records, k, active_signals=None, window=STACK
             feats.append([f["prob"][name].get(z, 0.0) for name in active_signals])
             labels.append(1 if z == f["actual"] else 0)
     if len(feats) < 50 or sum(labels) < 3:
-        return _rank_bma(folds, len(folds)-1, active_signals)[:k]
+        return _rank_bma(folds, len(folds)-1, active_signals, window=window)[:k]
     try:
         from sklearn.ensemble import GradientBoostingClassifier
         clf = GradientBoostingClassifier(n_estimators=ne, max_depth=md, learning_rate=lr, subsample=0.8, random_state=42)
@@ -231,7 +232,7 @@ def predict_stacking_zodiacs(records, k, active_signals=None,
             feats.append([f["prob"][name].get(z, 0.0) for name in active_signals])
             labels.append(1 if z == f["actual"] else 0)
     if len(feats) < 50 or sum(labels) < 3:
-        rank = _rank_bma(folds, len(folds) - 1, active_signals)
+        rank = _rank_bma(folds, len(folds) - 1, active_signals, window=window)
         return rank[:k]
     try:
         from sklearn.ensemble import GradientBoostingClassifier
