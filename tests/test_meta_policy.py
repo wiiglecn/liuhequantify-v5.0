@@ -1,5 +1,5 @@
 import unittest
-from core.v57_meta_policy import HorizonConfig,fit_meta_policy,predict_meta,evaluate_meta
+from core.meta_policy import HorizonConfig,fit_meta_policy,predict_meta,evaluate_meta
 
 class V57MetaPolicyTest(unittest.TestCase):
     def _fold(self,actual,probs,regime=0):
