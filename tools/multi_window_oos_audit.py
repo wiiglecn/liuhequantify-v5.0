@@ -212,6 +212,10 @@ def main() -> int:
             ],
         },
         "windows": windows_report,
+        "decision": {
+            "three_zodiac": assess_decision(windows_report, "three_zodiac"),
+            "twenty_code": assess_decision(windows_report, "twenty_code"),
+        },
         "segments": segments,
         "current_policy": {
             "three_zodiac": z_result["policy"],
