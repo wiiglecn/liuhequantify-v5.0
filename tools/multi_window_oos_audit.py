@@ -20,6 +20,15 @@ from tools.compare_live_k_policy import (
     load_clean_records, paired, stacking_topk, summary,
 )
 
+# 每个目标 K 使用独立策略和独立随机基线；不要横向比较不同 K 的原始命中率。
+ZODIAC_TARGET_KS = (3, 4, 6)
+RANDOM_BASELINES = {
+    "three_zodiac": 3 / 12,
+    "four_zodiac": 4 / 12,
+    "six_zodiac": 6 / 12,
+    "twenty_code": 20 / 49,
+}
+
 
 def parse_windows(value: str) -> list[int]:
     """解析并校验窗口列表，拒绝重复、非正数和不足 10 期的窗口。"""
@@ -141,7 +150,7 @@ def main() -> int:
         k: predict_and_backtest_k(
             z_folds, current_z, zodiac.SIGNAL_NAMES, z_candidates, k, eval_n
         )
-        for k in (3, 4, 6)
+        for k in ZODIAC_TARGET_KS
     }
     w_result = predict_and_backtest_k(
         w_folds, current_w, wide.SIGNAL_NAMES, wide.ALL_NUMS, 20, eval_n
@@ -156,7 +165,7 @@ def main() -> int:
     if len(new_w) != eval_n:
         raise SystemExit(f"20码 OOS 样本长度不一致：{len(new_w)}，预期={eval_n}")
 
-    old_z = {k: [] for k in (3, 4, 6)}
+    old_z = {k: [] for k in ZODIAC_TARGET_KS}
     old_w = []
     first_eval_idx = len(z_folds) - eval_n
     for index in range(first_eval_idx, len(z_folds)):
@@ -180,10 +189,10 @@ def main() -> int:
         windows_report[str(window)] = {
             "requested_n": window,
             "actual_n": n,
-            "three_zodiac": evaluate_segment(new_z[3][-n:], old_z[3][-n:], 3 / 12),
-            "four_zodiac": evaluate_segment(new_z[4][-n:], old_z[4][-n:], 4 / 12),
-            "six_zodiac": evaluate_segment(new_z[6][-n:], old_z[6][-n:], 6 / 12),
-            "twenty_code": evaluate_segment(new_w[-n:], old_w[-n:], 20 / 49),
+            "three_zodiac": evaluate_segment(new_z[3][-n:], old_z[3][-n:], RANDOM_BASELINES["three_zodiac"]),
+            "four_zodiac": evaluate_segment(new_z[4][-n:], old_z[4][-n:], RANDOM_BASELINES["four_zodiac"]),
+            "six_zodiac": evaluate_segment(new_z[6][-n:], old_z[6][-n:], RANDOM_BASELINES["six_zodiac"]),
+            "twenty_code": evaluate_segment(new_w[-n:], old_w[-n:], RANDOM_BASELINES["twenty_code"]),
             "first_open_time": eval_dates[-n] if n else None,
             "last_open_time": eval_dates[-1] if n else None,
         }
@@ -196,10 +205,10 @@ def main() -> int:
             w_new = [new_w[i] for i in positions]
             w_old = [old_w[i] for i in positions]
             segments[grouping][key] = {
-                "three_zodiac": evaluate_segment([new_z[3][i] for i in positions], [old_z[3][i] for i in positions], 3 / 12),
-                "four_zodiac": evaluate_segment([new_z[4][i] for i in positions], [old_z[4][i] for i in positions], 4 / 12),
-                "six_zodiac": evaluate_segment([new_z[6][i] for i in positions], [old_z[6][i] for i in positions], 6 / 12),
-                "twenty_code": evaluate_segment(w_new, w_old, 20 / 49),
+                "three_zodiac": evaluate_segment([new_z[3][i] for i in positions], [old_z[3][i] for i in positions], RANDOM_BASELINES["three_zodiac"]),
+                "four_zodiac": evaluate_segment([new_z[4][i] for i in positions], [old_z[4][i] for i in positions], RANDOM_BASELINES["four_zodiac"]),
+                "six_zodiac": evaluate_segment([new_z[6][i] for i in positions], [old_z[6][i] for i in positions], RANDOM_BASELINES["six_zodiac"]),
+                "twenty_code": evaluate_segment(w_new, w_old, RANDOM_BASELINES["twenty_code"]),
                 "first_open_time": eval_dates[positions[0]],
                 "last_open_time": eval_dates[positions[-1]],
             }
@@ -214,7 +223,7 @@ def main() -> int:
             "first_open_time": eval_dates[0] if eval_dates else None,
             "last_open_time": eval_dates[-1] if eval_dates else None,
             "strict_walk_forward": True,
-            "random_baselines": {"three_zodiac": 3 / 12, "twenty_code": 20 / 49},
+            "random_baselines": RANDOM_BASELINES,
             "holdout_status": (
                 "历史最近 120 期不是未触碰的独立留出集；最近 30 期已在前一轮审计中查看。"
                 "请冻结当前实现与评估口径，未来新增开奖用于真正的前瞻验证。"
