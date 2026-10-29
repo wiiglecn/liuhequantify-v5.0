@@ -62,6 +62,44 @@ def evaluate_segment(new_hits: list[int], old_hits: list[int], baseline: float) 
     }
 
 
+def assess_decision(windows_report: dict, target_key: str) -> dict:
+    """使用预先声明的保守门槛给出研究决策，不直接自动切换生产策略。"""
+    required = ("120", "180", "300")
+    missing = [key for key in required if key not in windows_report or
+               windows_report[key]["actual_n"] < int(key)]
+    if missing:
+        return {
+            "decision": "insufficient_evidence",
+            "reason": f"窗口数据不足：{', '.join(missing)}",
+            "production_switch_allowed": False,
+        }
+    rows = [windows_report[key][target_key] for key in required]
+    old_rates = [row["old_stacking"]["hit_rate"] for row in rows]
+    new_rates = [row["k_specific"]["hit_rate"] for row in rows]
+    baselines = [row["k_specific"]["baseline"] for row in rows]
+    ci = rows[-1]["paired_difference"].get("paired_bootstrap_95_ci_percentage_points")
+    stable_lift = all(new >= old and new >= base for new, old, base in zip(new_rates, old_rates, baselines))
+    positive_300_ci = bool(ci and ci[0] > 0)
+    eligible = stable_lift and positive_300_ci
+    return {
+        "decision": "candidate_for_prospective_validation" if eligible else "retain_old_or_shadow_mode",
+        "criteria": {
+            "k_policy_not_worse_than_old_and_at_or_above_random_baseline_in_all_windows": stable_lift,
+            "300_draw_paired_bootstrap_95_ci_lower_bound_above_zero_percentage_points": positive_300_ci,
+        },
+        "window_hit_rates": {
+            key: {
+                "old_stacking_percent": windows_report[key][target_key]["old_stacking"]["hit_rate_percent"],
+                "k_specific_percent": windows_report[key][target_key]["k_specific"]["hit_rate_percent"],
+                "random_baseline_percent": windows_report[key][target_key]["k_specific"]["baseline_percent"],
+            }
+            for key in required
+        },
+        "production_switch_allowed": False,
+        "reason": "即使满足历史门槛，也必须先冻结代码与评估口径并完成前瞻验证。",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", default="macau_history.json")
