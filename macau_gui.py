@@ -345,7 +345,7 @@ class App:
         self.queue = queue.Queue()
         self.results = None
         self.worker = None
-        root.title("澳门六合彩开奖记录分析与预测-猎手2026版")
+        root.title("澳门六合彩开奖记录分析与预测-猎手V5.8.5版")
         root.geometry("1040x740")
         root.configure(bg=BG_MAIN)
         self._setup_style()
@@ -389,7 +389,7 @@ class App:
         header.pack(fill="x", padx=20, pady=(16, 2))
         tk.Label(header, text="澳门六合彩", fg=ACCENT, bg=BG_MAIN,
                  font=FONT_TITLE).pack(side="left")
-        tk.Label(header, text="  开奖记录分析与预测-猎手2026版", fg=TEXT, bg=BG_MAIN,
+        tk.Label(header, text="  开奖记录分析与预测-猎手V5.8.5版", fg=TEXT, bg=BG_MAIN,
                  font=("Microsoft YaHei UI", 13)).pack(side="left", padx=2)
         tk.Label(header, text="【AI大模型反推理 + 数学模型 + 马尔可夫模型 + 贝叶斯后验】", fg=MUTED, bg=BG_MAIN,
                  font=FONT_SM).pack(side="left", padx=(10, 0), pady=(4, 0))
