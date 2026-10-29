@@ -136,24 +136,34 @@ def main() -> int:
     eval_n = (len(z_folds) - 60) if args.full_history else min(max_window, len(z_folds) - 60)
     if eval_n < max_window and not args.full_history:
         print(f"提示：可用 OOS 样本只有 {eval_n} 期，部分目标窗口将缩短。")
-    z_result = predict_and_backtest_k(
-        z_folds, current_z, zodiac.SIGNAL_NAMES, z_candidates, 3, eval_n
-    )
+    # 同一生肖信号折分别拟合 K=3/4/6，避免把三肖权重直接套用于四肖/六肖。
+    zodiac_results = {
+        k: predict_and_backtest_k(
+            z_folds, current_z, zodiac.SIGNAL_NAMES, z_candidates, k, eval_n
+        )
+        for k in (3, 4, 6)
+    }
     w_result = predict_and_backtest_k(
         w_folds, current_w, wide.SIGNAL_NAMES, wide.ALL_NUMS, 20, eval_n
     )
-    if z_result is None or w_result is None:
-        raise SystemExit("K 专项策略未能生成有效 OOS 结果")
-    new_z, new_w = z_result["hits"], w_result["hits"]
-    if len(new_z) != len(new_w) or len(new_z) != eval_n:
-        raise SystemExit(f"OOS 样本长度不一致：三肖={len(new_z)}，20码={len(new_w)}，预期={eval_n}")
+    if any(result is None for result in zodiac_results.values()) or w_result is None:
+        raise SystemExit("一个或多个 K 专项策略未能生成有效 OOS 结果")
+    new_z = {k: result["hits"] for k, result in zodiac_results.items()}
+    new_w = w_result["hits"]
+    for k, hits in new_z.items():
+        if len(hits) != eval_n:
+            raise SystemExit(f"{k}肖 OOS 样本长度不一致：{len(hits)}，预期={eval_n}")
+    if len(new_w) != eval_n:
+        raise SystemExit(f"20码 OOS 样本长度不一致：{len(new_w)}，预期={eval_n}")
 
-    old_z, old_w = [], []
+    old_z = {k: [] for k in (3, 4, 6)}
+    old_w = []
     first_eval_idx = len(z_folds) - eval_n
     for index in range(first_eval_idx, len(z_folds)):
-        old_z.append(int(z_folds[index]["actual"] in set(
-            stacking_topk(zodiac, z_folds, index, 3, zodiac.SIGNAL_NAMES)
-        )))
+        for k in (3, 4, 6):
+            old_z[k].append(int(z_folds[index]["actual"] in set(
+                stacking_topk(zodiac, z_folds, index, k, zodiac.SIGNAL_NAMES)
+            )))
         old_w.append(int(w_folds[index]["actual"] in set(
             stacking_topk(wide, w_folds, index, 20, wide.SIGNAL_NAMES)
         )))
@@ -167,13 +177,13 @@ def main() -> int:
     windows_report = {}
     for window in args.windows:
         n = min(window, eval_n)
-        new_z_w, old_z_w = new_z[-n:], old_z[-n:]
-        new_w_w, old_w_w = new_w[-n:], old_w[-n:]
         windows_report[str(window)] = {
             "requested_n": window,
             "actual_n": n,
-            "three_zodiac": evaluate_segment(new_z_w, old_z_w, 3 / 12),
-            "twenty_code": evaluate_segment(new_w_w, old_w_w, 20 / 49),
+            "three_zodiac": evaluate_segment(new_z[3][-n:], old_z[3][-n:], 3 / 12),
+            "four_zodiac": evaluate_segment(new_z[4][-n:], old_z[4][-n:], 4 / 12),
+            "six_zodiac": evaluate_segment(new_z[6][-n:], old_z[6][-n:], 6 / 12),
+            "twenty_code": evaluate_segment(new_w[-n:], old_w[-n:], 20 / 49),
             "first_open_time": eval_dates[-n] if n else None,
             "last_open_time": eval_dates[-1] if n else None,
         }
@@ -183,12 +193,12 @@ def main() -> int:
     for grouping in ("year", "quarter"):
         segments[grouping] = {}
         for key, positions in segment_indices(eval_dates, grouping).items():
-            z_new = [new_z[i] for i in positions]
-            z_old = [old_z[i] for i in positions]
             w_new = [new_w[i] for i in positions]
             w_old = [old_w[i] for i in positions]
             segments[grouping][key] = {
-                "three_zodiac": evaluate_segment(z_new, z_old, 3 / 12),
+                "three_zodiac": evaluate_segment([new_z[3][i] for i in positions], [old_z[3][i] for i in positions], 3 / 12),
+                "four_zodiac": evaluate_segment([new_z[4][i] for i in positions], [old_z[4][i] for i in positions], 4 / 12),
+                "six_zodiac": evaluate_segment([new_z[6][i] for i in positions], [old_z[6][i] for i in positions], 6 / 12),
                 "twenty_code": evaluate_segment(w_new, w_old, 20 / 49),
                 "first_open_time": eval_dates[positions[0]],
                 "last_open_time": eval_dates[positions[-1]],
@@ -219,11 +229,15 @@ def main() -> int:
         "windows": windows_report,
         "decision": {
             "three_zodiac": assess_decision(windows_report, "three_zodiac"),
+            "four_zodiac": assess_decision(windows_report, "four_zodiac"),
+            "six_zodiac": assess_decision(windows_report, "six_zodiac"),
             "twenty_code": assess_decision(windows_report, "twenty_code"),
         },
         "segments": segments,
         "current_policy": {
-            "three_zodiac": z_result["policy"],
+            "three_zodiac": zodiac_results[3]["policy"],
+            "four_zodiac": zodiac_results[4]["policy"],
+            "six_zodiac": zodiac_results[6]["policy"],
             "twenty_code": w_result["policy"],
         },
     }
@@ -239,6 +253,16 @@ def main() -> int:
                 "three_zodiac": {
                     "old": v["three_zodiac"]["old_stacking"]["hit_rate_percent"],
                     "k_policy": v["three_zodiac"]["k_specific"]["hit_rate_percent"],
+                    "n": v["actual_n"],
+                },
+                "four_zodiac": {
+                    "old": v["four_zodiac"]["old_stacking"]["hit_rate_percent"],
+                    "k_policy": v["four_zodiac"]["k_specific"]["hit_rate_percent"],
+                    "n": v["actual_n"],
+                },
+                "six_zodiac": {
+                    "old": v["six_zodiac"]["old_stacking"]["hit_rate_percent"],
+                    "k_policy": v["six_zodiac"]["k_specific"]["hit_rate_percent"],
                     "n": v["actual_n"],
                 },
                 "twenty_code": {
