@@ -22,9 +22,9 @@ V5.5.1 将 V5.5 的“稳定性/增量信息”从纯函数层推进到真实历
 
 ## 运行
 
-~~~bash
-python v55_1_signal_discovery_run.py --input macau_history.json --output-dir reports/v5.5.1
-~~~
+```bash
+python signal_discovery_run.py --input macau_history.json --output-dir reports/v5.5.1
+```
 
 输出：
 
@@ -34,7 +34,7 @@ python v55_1_signal_discovery_run.py --input macau_history.json --output-dir rep
 
 ## 当前历史数据
 
-仓库当前历史文件为 999 期，时间覆盖 2024-01-04 至 2026-09-24。V5.5.1 runner 会使用该文件，不进行网络刷新。
+仓库当前历史文件为 999 期，时间覆盖 2024-01-04 至 2026-09-24。运行器会使用该文件，不进行网络刷新。
 
 ## 研究边界
 
