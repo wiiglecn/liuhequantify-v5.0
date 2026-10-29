@@ -29,7 +29,13 @@ def predict_and_backtest_k(
     folds 每一行的 prob 必须在其 actual 开出前生成。current_prob 则必须只由
     当前已知的完整历史生成，代表下一期预测特征。
     """
-    cfg = config or KPolicyConfig()
+    # 线上使用精简搜索网格，避免每次 GUI 预测触发过重的嵌套搜索。
+    cfg = config or KPolicyConfig(
+        windows=(30, 60, 120), pair_lambdas=(0.0, 0.02),
+        diversity_lambdas=(0.0,), min_history=60, validation_size=20,
+        shrinkage=0.35, min_weight=0.03, temperature=0.20,
+        complexity_penalty=0.002, min_gain=0.005,
+    )
     names = list(signal_names)
     cands = list(candidates)
     if not names or not cands or target_k <= 0 or target_k > len(cands):
