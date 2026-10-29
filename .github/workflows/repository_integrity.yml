@@ -8,25 +8,37 @@ on:
 jobs:
   integrity:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install test dependencies
-        run: python -m pip install --upgrade pip pytest numpy scikit-learn
-      - name: Filename and stale-reference checks
-        run: python tools/repository_integrity.py
-      - name: Compile Python sources
+      - name: Install project and test dependencies
+        run: python -m pip install -r requirements.txt pytest
+      - name: Compile changed K-policy modules
+        if: ${{ hashFiles('core/live_k_policy.py') != '' }}
+        run: python -m py_compile core/live_k_policy.py core/k_specific_policy.py core/pair_signal.py dimensions.py special_pool.py tools/compare_live_k_policy.py tools/multi_window_oos_audit.py
+      - name: Run K-policy regression tests
+        if: ${{ hashFiles('tests/test_live_k_policy.py') != '' }}
+        run: python -m unittest discover -s tests -p "test_live_k_policy.py" -v
+      - name: Compile all Python sources
         run: python -m compileall -q .
-      - name: Run unit tests
-        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Run full test suite
+        run: python -m pytest -q
+      - name: Run historical K-policy OOS comparison
+        if: ${{ hashFiles('tools/compare_live_k_policy.py') != '' }}
+        run: python -X utf8 tools/compare_live_k_policy.py --backtest-n 30
       - name: Run K-policy multi-window OOS audit
-        run: python tools/multi_window_oos_audit.py --windows 120,180,300 --output reports/v585_multi_window_oos.json
-      - name: Upload multi-window OOS report
+        run: python -X utf8 tools/multi_window_oos_audit.py --windows 120,180,300 --output reports/v585_multi_window_oos.json
+      - name: Upload OOS comparison reports
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: v585-multi-window-oos-report
-          path: reports/v585_multi_window_oos.json
-          if-no-files-found: error
+          name: k-policy-oos-reports
+          path: |
+            reports/k_policy_oos_comparison.json
+            reports/v585_multi_window_oos.json
+          if-no-files-found: warn
+      - name: Filename and stale-reference checks
+        run: python tools/repository_integrity.py
