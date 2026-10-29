@@ -42,6 +42,18 @@ class TestLiveKPolicy(unittest.TestCase):
         )
         self.assertIsNone(result)
 
+    def test_ignores_rows_missing_a_required_signal(self):
+        """历史折缺少必需信号时，不应把它当作有效训练样本。"""
+        rows = [
+            {"actual": i % 3, "prob": {"s1": {0: .6, 1: .3, 2: .1}}}
+            for i in range(80)
+        ]
+        current = {"s1": {0: .4, 1: .4, 2: .2}, "s2": {0: .3, 1: .4, 2: .3}}
+        result = predict_and_backtest_k(
+            rows, current, ["s1", "s2"], [0, 1, 2], 1, backtest_n=5
+        )
+        self.assertIsNone(result)
+
     def test_returns_valid_top_k_and_oos_hits(self):
         candidates = [0, 1, 2]
         rows = []
