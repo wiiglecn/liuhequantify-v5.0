@@ -30,6 +30,18 @@ class TestLiveKPolicy(unittest.TestCase):
         )
         self.assertIsNone(result)
 
+    def test_rejects_empty_signal_names(self):
+        """没有可用信号时应安全返回 None。"""
+        rows = [
+            {"actual": i % 3, "prob": {"s1": {0: .6, 1: .3, 2: .1}}}
+            for i in range(80)
+        ]
+        result = predict_and_backtest_k(
+            rows, {"s1": {0: .4, 1: .4, 2: .2}},
+            [], [0, 1, 2], 1, backtest_n=5
+        )
+        self.assertIsNone(result)
+
     def test_returns_valid_top_k_and_oos_hits(self):
         candidates = [0, 1, 2]
         rows = []
