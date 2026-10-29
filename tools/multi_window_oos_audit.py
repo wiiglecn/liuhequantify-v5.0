@@ -90,8 +90,7 @@ def main() -> int:
         raise SystemExit("三肖与20码预计算折数量不一致，拒绝比较")
 
     # 每个目标只执行一次最长 OOS 回测，较短窗口取同一序列后缀，保证可比。
-    eval_n = min(len(args.windows) if False else (len(z_folds) - 60),
-                 len(z_folds) - 60) if args.full_history else min(max_window, len(z_folds) - 60)
+    eval_n = (len(z_folds) - 60) if args.full_history else min(max_window, len(z_folds) - 60)
     if eval_n < max_window and not args.full_history:
         print(f"提示：可用 OOS 样本只有 {eval_n} 期，部分目标窗口将缩短。")
     z_result = predict_and_backtest_k(
