@@ -643,7 +643,9 @@ def predict_zodiac_pool(records, llm_result=None, backtest_n: int = 30,
         try:
             import zodiac_ensemble as ze
             from core.live_k_policy import predict_and_backtest_k
-            n_folds = max(1, len(records) - 10)
+            # K策略只需要覆盖最近回测窗口及最多120期拟合窗，避免每次预测重算全历史。
+            n_available = max(1, len(records) - 10)
+            n_folds = min(n_available, max(150, backtest_n + 120))
             folds = ze.precompute_folds(records, n_folds)
             zodiac_map = build_zodiac_map(records) if records else {}
             current_prob, _ = ze._compute_fold_probs(records, zodiac_map)
