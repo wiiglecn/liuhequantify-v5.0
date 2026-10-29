@@ -1,9 +1,19 @@
 import unittest
 
-from tools.multi_window_oos_audit import parse_windows, segment_indices, evaluate_segment, assess_decision
+from tools.multi_window_oos_audit import (
+    RANDOM_BASELINES, ZODIAC_TARGET_KS, parse_windows, segment_indices,
+    evaluate_segment, assess_decision,
+)
 
 
 class TestMultiWindowOOSAudit(unittest.TestCase):
+    def test_all_requested_k_values_have_correct_random_baselines(self):
+        self.assertEqual(ZODIAC_TARGET_KS, (3, 4, 6))
+        self.assertAlmostEqual(RANDOM_BASELINES["three_zodiac"], 3 / 12)
+        self.assertAlmostEqual(RANDOM_BASELINES["four_zodiac"], 4 / 12)
+        self.assertAlmostEqual(RANDOM_BASELINES["six_zodiac"], 6 / 12)
+        self.assertAlmostEqual(RANDOM_BASELINES["twenty_code"], 20 / 49)
+
     def test_parse_windows_sorts_values(self):
         self.assertEqual(parse_windows("300,120,180"), [120, 180, 300])
 
