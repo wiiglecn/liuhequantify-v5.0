@@ -23,8 +23,11 @@ from tools.compare_live_k_policy import (
 
 def parse_windows(value: str) -> list[int]:
     """解析并校验窗口列表，拒绝重复、非正数和不足 10 期的窗口。"""
+    parts = value.split(",")
+    if any(not part.strip() for part in parts):
+        raise argparse.ArgumentTypeError("窗口列表不能包含空项")
     try:
-        windows = [int(part.strip()) for part in value.split(",") if part.strip()]
+        windows = [int(part.strip()) for part in parts]
     except ValueError as exc:
         raise argparse.ArgumentTypeError("窗口必须是逗号分隔的整数") from exc
     if not windows or any(n < 10 for n in windows):
@@ -45,6 +48,8 @@ def segment_indices(dates: list[str], grouping: str) -> dict[str, list[int]]:
         else:
             try:
                 month = int(date[5:7])
+                if not 1 <= month <= 12:
+                    raise ValueError("月份超出范围")
                 key = f"{date[:4]}-Q{(month - 1) // 3 + 1}"
             except ValueError:
                 key = "unknown"
