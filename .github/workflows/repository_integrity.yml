@@ -14,9 +14,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Compile Python sources
+      - name: Compile changed K-policy modules
+        run: python -m py_compile core/live_k_policy.py core/k_specific_policy.py core/pair_signal.py dimensions.py special_pool.py
+      - name: Run K-policy regression tests
+        run: python -m unittest discover -s tests -p "test_live_k_policy.py" -v
+      - name: Compile all Python sources
         run: python -m compileall -q .
-      - name: Run unit tests
+      - name: Run full unit test suite
         run: python -m unittest discover -s tests -p "test_*.py" -v
       - name: Filename and stale-reference checks
         run: python tools/repository_integrity.py
