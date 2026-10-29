@@ -18,6 +18,18 @@ class TestLiveKPolicy(unittest.TestCase):
         )
         self.assertIsNone(result)
 
+    def test_rejects_invalid_target_k(self):
+        """目标集合大小非法时应安全返回 None，而不是中断预测流程。"""
+        rows = [
+            {"actual": i % 3, "prob": {"s1": {0: .6, 1: .3, 2: .1}}}
+            for i in range(80)
+        ]
+        result = predict_and_backtest_k(
+            rows, {"s1": {0: .4, 1: .4, 2: .2}},
+            ["s1"], [0, 1, 2], 4, backtest_n=5
+        )
+        self.assertIsNone(result)
+
     def test_returns_valid_top_k_and_oos_hits(self):
         candidates = [0, 1, 2]
         rows = []
