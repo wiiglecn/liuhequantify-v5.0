@@ -7,11 +7,11 @@ class TestMultiWindowOOSAudit(unittest.TestCase):
     def test_parse_windows_sorts_values(self):
         self.assertEqual(parse_windows("300,120,180"), [120, 180, 300])
 
-    def test_parse_windows_rejects_duplicates_and_small_values(self):
-        with self.assertRaises(Exception):
-            parse_windows("120,120")
-        with self.assertRaises(Exception):
-            parse_windows("9,30")
+    def test_parse_windows_rejects_duplicates_small_values_and_empty_items(self):
+        for value in ("120,120", "9,30", "120,,300", ",120", "120,"):
+            with self.subTest(value=value):
+                with self.assertRaises(Exception):
+                    parse_windows(value)
 
     def test_segment_indices_uses_calendar_dates(self):
         dates = [
@@ -23,6 +23,8 @@ class TestMultiWindowOOSAudit(unittest.TestCase):
         self.assertEqual(segment_indices(dates, "quarter"), {
             "2025-Q4": [0], "2026-Q1": [1], "2026-Q2": [2]
         })
+        malformed = ["2026-13-01 21:00:00", "bad-date"]
+        self.assertEqual(segment_indices(malformed, "quarter"), {"unknown": [0, 1]})
 
     def test_decision_refuses_to_promote_without_all_windows(self):
         result = assess_decision({"120": {"actual_n": 120}}, "three_zodiac")
