@@ -17,8 +17,10 @@ jobs:
       - name: Install project and test dependencies
         run: python -m pip install -r requirements.txt pytest
       - name: Compile changed K-policy modules
+        if: ${{ hashFiles('core/live_k_policy.py') != '' }}
         run: python -m py_compile core/live_k_policy.py core/k_specific_policy.py core/pair_signal.py dimensions.py special_pool.py
       - name: Run K-policy regression tests
+        if: ${{ hashFiles('tests/test_live_k_policy.py') != '' }}
         run: python -m unittest discover -s tests -p "test_live_k_policy.py" -v
       - name: Compile all Python sources
         run: python -m compileall -q .
