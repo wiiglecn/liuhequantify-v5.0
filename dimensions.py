@@ -639,6 +639,35 @@ def predict_zodiac_pool(records, llm_result=None, backtest_n: int = 30,
     baseline = k / 12
 
     if use_stacking:
+        # 优先使用 V5.8.4 K 专项策略；每个 K 独立学习权重/集合结构，并用滚动 OOS 评估。
+        try:
+            import zodiac_ensemble as ze
+            from core.live_k_policy import predict_and_backtest_k
+            # K策略只需要覆盖最近回测窗口及最多120期拟合窗，避免每次预测重算全历史。
+            n_available = max(1, len(records) - 10)
+            n_folds = min(n_available, max(150, backtest_n + 120))
+            folds = ze.precompute_folds(records, n_folds)
+            zodiac_map = build_zodiac_map(records) if records else {}
+            current_prob, _ = ze._compute_fold_probs(records, zodiac_map)
+            candidates = sorted(set(zodiac_map.values()))
+            result = predict_and_backtest_k(
+                folds, current_prob, ze.SIGNAL_NAMES, candidates, k, backtest_n
+            )
+            if result:
+                hits = result["hits"]
+                n_clamped = len(hits)
+                accuracy = sum(hits) / n_clamped if n_clamped else 0.0
+                std_error = math.sqrt(accuracy * (1 - accuracy) / n_clamped) if n_clamped else 0.0
+                stab = rolling_stability(hits)
+                return ZodiacPool(
+                    zodiacs=result["ranking"],
+                    strategy=f"K专项自适应策略(V5.8.4); {n_clamped}期严格滚动OOS",
+                    hit_rate=accuracy, baseline=baseline, lift=accuracy - baseline,
+                    std_error=std_error, stability=stab,
+                )
+        except Exception:
+            pass  # 新策略不可用时继续使用既有 Stacking 兜底
+
         try:
             from zodiac_ensemble import predict_stacking_zodiacs, backtest_stacking
             zodiacs = predict_stacking_zodiacs(records, k)
