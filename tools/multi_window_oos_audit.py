@@ -16,6 +16,10 @@ import wide_ensemble as wide
 from data_fetcher import Record
 from dimensions import build_zodiac_map
 from core.live_k_policy import predict_and_backtest_k
+from core.statistical_validation_v587 import (
+    benjamini_hochberg, binomial_upper_tail, holm_adjust,
+    moving_block_bootstrap_ci,
+)
 from tools.compare_live_k_policy import (
     load_clean_records, paired, stacking_topk, summary,
 )
@@ -197,6 +201,60 @@ def main() -> int:
             "last_open_time": eval_dates[-1] if n else None,
         }
 
+    # V5.8.7：对每个目标/窗口做精确随机基线检验，并对整个比较族进行多重检验校正。
+    # 窗口相互重叠，因此这些 p 值不应被解释为独立重复试验；Holm 校正可在任意依赖下控制 FWER。
+    stat_rows = []
+    for window_key, window_data in windows_report.items():
+        n = window_data["actual_n"]
+        for target_key, baseline in RANDOM_BASELINES.items():
+            result = window_data[target_key]["k_specific"]
+            raw_p = binomial_upper_tail(result["hits"], n, baseline)
+            new_hits = (new_z[3] if target_key == "three_zodiac" else
+                        new_z[4] if target_key == "four_zodiac" else
+                        new_z[6] if target_key == "six_zodiac" else new_w)[-n:]
+            old_hits = (old_z[3] if target_key == "three_zodiac" else
+                        old_z[4] if target_key == "four_zodiac" else
+                        old_z[6] if target_key == "six_zodiac" else old_w)[-n:]
+            block_ci = moving_block_bootstrap_ci(
+                new_hits, old_hits, block_size=min(5, n), repetitions=2000,
+                seed=20261029 + n + len(stat_rows),
+            )
+            stat_rows.append({
+                "window": window_key,
+                "target": target_key,
+                "n": n,
+                "hits": result["hits"],
+                "baseline": baseline,
+                "raw_one_sided_binomial_p": raw_p,
+                "block_bootstrap_paired_difference_95_ci_percentage_points": [
+                    round(block_ci[0] * 100, 3), round(block_ci[1] * 100, 3)
+                ],
+            })
+    raw_ps = [row["raw_one_sided_binomial_p"] for row in stat_rows]
+    holm_ps = holm_adjust(raw_ps)
+    bh_qs = benjamini_hochberg(raw_ps)
+    for idx, row in enumerate(stat_rows):
+        row["holm_adjusted_p"] = holm_ps[idx]
+        row["benjamini_hochberg_q"] = bh_qs[idx]
+    statistical_validation = {
+        "version": "V5.8.7",
+        "tests_count": len(stat_rows),
+        "multiple_testing_family": "当前报告内所有目标 K x 所有窗口的比较合并为一个检验族",
+        "methods": [
+            "单侧精确二项上尾检验（零假设为对应 K 的理论随机命中率）",
+            "Holm 家族错误率校正",
+            "Benjamini-Hochberg FDR 校正（探索性，窗口重叠时需谨慎解释）",
+            "新旧策略配对时间块 bootstrap 95% 区间（区块长度最多 5 期）",
+        ],
+        "results": stat_rows,
+        "limitations": [
+            "二项检验假设各期命中指标独立且零假设命中率正确；若开奖规则或标签口径不同需调整。",
+            "重叠窗口高度相关，校正不能把它们变成独立证据。",
+            "本报告的精确检验只评估已报告的命中数；尚未在模拟的完整开奖序列上重跑全部自适应搜索管线。",
+            "通过统计门槛也只允许前瞻影子验证，不自动切换生产策略。",
+        ],
+    }
+
     # 默认最近 300 期可能只覆盖一个年份；报告会明确显示，不能将其冒充跨年验证。
     segments = {}
     for grouping in ("year", "quarter"):
@@ -236,6 +294,7 @@ def main() -> int:
             ],
         },
         "windows": windows_report,
+        "statistical_validation": statistical_validation,
         "decision": {
             "three_zodiac": assess_decision(windows_report, "three_zodiac"),
             "four_zodiac": assess_decision(windows_report, "four_zodiac"),
