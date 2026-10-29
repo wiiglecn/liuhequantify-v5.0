@@ -82,16 +82,19 @@ def main():
     if args.backtest_n < 10: raise SystemExit("--backtest-n 至少为 10")
     records,audit = load_clean_records(args.input)
     if len(records) < 100: raise SystemExit(f"历史样本不足：{len(records)}")
-    old_z = zodiac.backtest_stacking(records,args.backtest_n).get(3,[])
-    old_w = wide.backtest_stacking(records,args.backtest_n,20)
-    n_folds = min(max(1,len(records)-10), max(150,args.backtest_n+120))
+    # 为旧模型与新策略共用同一批预计算 OOS folds，避免每期重复计算全历史特征。
+    n_folds = min(max(1,len(records)-10), max(200,args.backtest_n+150))
     z_folds = zodiac.precompute_folds(records,n_folds)
+    old_z = [int(fold["actual"] in set(zodiac._rank_stacking(z_folds, index, zodiac.SIGNAL_NAMES)[:3]))
+             for index, fold in enumerate(z_folds) if index >= len(z_folds)-args.backtest_n]
     zmap = build_zodiac_map(records)
     current_z,_ = zodiac._compute_fold_probs(records,zmap)
     z_candidates = sorted(set(zmap.values()))
     new_z = predict_and_backtest_k(z_folds,current_z,zodiac.SIGNAL_NAMES,z_candidates,3,args.backtest_n)
     if new_z is None: raise SystemExit("三肖 K 策略未产生有效 OOS 结果")
     w_folds = wide.precompute_folds(records,n_folds)
+    old_w = [int(fold["actual"] in set(wide._rank_stacking(w_folds, index, wide.SIGNAL_NAMES)[:20]))
+             for index, fold in enumerate(w_folds) if index >= len(w_folds)-args.backtest_n]
     current_w = wide._compute_fold_probs(records)
     new_w = predict_and_backtest_k(w_folds,current_w,wide.SIGNAL_NAMES,wide.ALL_NUMS,20,args.backtest_n)
     if new_w is None: raise SystemExit("20码 K 策略未产生有效 OOS 结果")
