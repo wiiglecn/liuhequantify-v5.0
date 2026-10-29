@@ -18,7 +18,7 @@ jobs:
         run: python -m pip install -r requirements.txt pytest
       - name: Compile changed K-policy modules
         if: ${{ hashFiles('core/live_k_policy.py') != '' }}
-        run: python -m py_compile core/live_k_policy.py core/k_specific_policy.py core/pair_signal.py dimensions.py special_pool.py
+        run: python -m py_compile core/live_k_policy.py core/k_specific_policy.py core/pair_signal.py dimensions.py special_pool.py tools/compare_live_k_policy.py
       - name: Run K-policy regression tests
         if: ${{ hashFiles('tests/test_live_k_policy.py') != '' }}
         run: python -m unittest discover -s tests -p "test_live_k_policy.py" -v
@@ -26,5 +26,15 @@ jobs:
         run: python -m compileall -q .
       - name: Run full test suite
         run: python -m pytest -q
+      - name: Run historical K-policy OOS comparison
+        if: ${{ hashFiles('tools/compare_live_k_policy.py') != '' }}
+        run: python -X utf8 tools/compare_live_k_policy.py --backtest-n 30
+      - name: Upload OOS comparison report
+        if: ${{ always() && hashFiles('tools/compare_live_k_policy.py') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: k-policy-oos-comparison
+          path: reports/k_policy_oos_comparison.json
+          if-no-files-found: warn
       - name: Filename and stale-reference checks
         run: python tools/repository_integrity.py
