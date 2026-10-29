@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 """对比旧 Stacking 与 K 专项策略在同一历史序列上的严格滚动 OOS 表现。"""
 from __future__ import annotations
-import argparse, json, math, random
+import argparse, json, math, random, sys
 from pathlib import Path
+
+# 允许从仓库根目录以外直接执行该脚本。
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from data_fetcher import Record
 import zodiac_ensemble as zodiac
 import wide_ensemble as wide
