@@ -323,6 +323,36 @@ def predict_wide_pool(records, llm_result=None, backtest_n: int = 30,
     baseline = k / 49
 
     if use_stacking:
+        # 优先使用 V5.8.4 K 专项策略；回测与线上预测采用相同的策略学习口径。
+        try:
+            import wide_ensemble as we
+            from core.live_k_policy import predict_and_backtest_k
+            # K策略只需要覆盖最近回测窗口及最多120期拟合窗，避免每次预测重算全历史。
+            n_available = max(1, len(records) - 10)
+            n_folds = min(n_available, max(150, backtest_n + 120))
+            folds = we.precompute_folds(records, n_folds)
+            current_prob = we._compute_fold_probs(records)
+            result = predict_and_backtest_k(
+                folds, current_prob, we.SIGNAL_NAMES, we.ALL_NUMS, k, backtest_n
+            )
+            if result:
+                hits = result["hits"]
+                n_clamped = len(hits)
+                hr = sum(hits) / n_clamped if n_clamped else 0.0
+                se = math.sqrt(hr * (1 - hr) / n_clamped) if n_clamped else 0.0
+                stab = rolling_stability(hits) if n_clamped else 0.0
+                strategy = f"K专项自适应策略(V5.8.4); {n_clamped}期严格滚动OOS"
+                if llm_result and getattr(llm_result, "predicted_set", None):
+                    strategy += "+LLM仅作参考"
+                return WidePool(
+                    numbers=sorted(result["ranking"]), strategy=strategy,
+                    hit_rate=hr, baseline=baseline, lift=hr - baseline,
+                    std_error=se, stability=stab,
+                )
+        except Exception:
+            pass  # 新策略不可用时继续使用既有 Stacking 兜底
+
+    if use_stacking:
         try:
             from wide_ensemble import predict_stacking_numbers, backtest_stacking, clear_cache as _wclear
             _wclear()
