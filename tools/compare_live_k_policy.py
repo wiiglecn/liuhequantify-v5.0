@@ -70,7 +70,8 @@ def paired(new, old, seed=20261029):
             "old_only_hits":sum(b and not a for a,b in zip(new,old)),
             "ties":sum(bool(a)==bool(b) for a,b in zip(new,old)),
             "difference_percentage_points":round(sum(diff)/n*100,3),
-            "paired_bootstrap_95_ci":[samples[int(.025*len(samples))],samples[int(.975*len(samples))]],\n            "paired_bootstrap_95_ci_percentage_points":[round(samples[int(.025*len(samples))]*100,3),round(samples[int(.975*len(samples))]*100,3)],
+            "paired_bootstrap_95_ci":[samples[int(.025*len(samples))],samples[int(.975*len(samples))]],
+            "paired_bootstrap_95_ci_percentage_points":[round(samples[int(.025*len(samples))]*100,3),round(samples[int(.975*len(samples))]*100,3)],
             "note":"配对 bootstrap 区间以百分点表示；短窗口结果仅为描述性统计，不构成未来预测优势证明"}
 
 
