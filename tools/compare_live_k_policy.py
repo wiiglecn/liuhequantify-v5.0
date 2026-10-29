@@ -23,13 +23,18 @@ def load_clean_records(path):
             kept.append(row)
             continue
         date_year = str(row.get("openTime", ""))[:4]
-        prior_year = str(prior.get("openTime", ""))[:4]
-        if str(row.get("expect", ""))[:4] == date_year and str(prior.get("expect", ""))[:4] != prior_year:
+        prior_date_year = str(prior.get("openTime", ""))[:4]
+        current_matches = str(row.get("expect", ""))[:4] == date_year
+        prior_matches = str(prior.get("expect", ""))[:4] == prior_date_year
+        if current_matches and not prior_matches:
             kept.remove(prior)
             kept.append(row)
             seen[key] = row
-        duplicates.append({"index": index, "kept_expect": seen[key].get("expect"),
-                           "duplicate_expect": row.get("expect"), "openTime": row.get("openTime")})
+            kept_expect, duplicate_expect = row.get("expect"), prior.get("expect")
+        else:
+            kept_expect, duplicate_expect = prior.get("expect"), row.get("expect")
+        duplicates.append({"index": index, "kept_expect": kept_expect,
+                           "duplicate_expect": duplicate_expect, "openTime": row.get("openTime")})
     kept.sort(key=lambda row: (str(row.get("openTime", "")), str(row.get("expect", ""))))
     records = [Record(expect=str(x["expect"]), open_time=str(x.get("openTime", "")),
                       regular=x["regular"], special=x["special"], waves=x.get("waves", []),
@@ -43,7 +48,8 @@ def load_clean_records(path):
 
 
 def wilson(hits, n, z=1.96):
-    if n == 0: return None
+    if n == 0:
+        return None
     p = hits / n
     d = 1 + z*z/n
     c = (p + z*z/(2*n))/d
@@ -95,13 +101,15 @@ def main():
     z_candidates = sorted(set(zmap.values()))
     new_z = predict_and_backtest_k(z_folds, current_z, zodiac.SIGNAL_NAMES,
                                    z_candidates, 3, args.backtest_n)
-    if new_z is None: raise SystemExit("三肖 K 策略未产生有效 OOS 结果")
+    if new_z is None:
+        raise SystemExit("三肖 K 策略未产生有效 OOS 结果")
 
     w_folds = wide.precompute_folds(records, len(records)-10)
     current_w = wide._compute_fold_probs(records)
     new_w = predict_and_backtest_k(w_folds, current_w, wide.SIGNAL_NAMES,
                                    wide.ALL_NUMS, 20, args.backtest_n)
-    if new_w is None: raise SystemExit("20码 K 策略未产生有效 OOS 结果")
+    if new_w is None:
+        raise SystemExit("20码 K 策略未产生有效 OOS 结果")
     if len(old_z) != len(new_z["hits"]) or len(old_w) != len(new_w["hits"]):
         raise SystemExit("新旧策略 OOS 期数不一致，拒绝进行不公平比较")
 
