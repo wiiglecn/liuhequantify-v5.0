@@ -73,6 +73,12 @@ def paired(new, old, seed=20261029):
             "paired_bootstrap_95_ci":[samples[int(.025*len(samples))],samples[int(.975*len(samples))]],
             "note":"配对短窗口描述性结果，不构成未来预测优势证明"}
 
+
+def stacking_topk(module, folds, index, k, signal_names):
+    """模拟旧版 live stacking：训练时排除训练前缀的最后一个 fold。"""
+    shifted_folds = folds[:index-1] + [folds[index]]
+    return module._rank_stacking(shifted_folds, index-1, signal_names)[:k]
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input",default="macau_history.json")
@@ -85,7 +91,7 @@ def main():
     # 为旧模型与新策略共用同一批预计算 OOS folds，避免每期重复计算全历史特征。
     n_folds = min(max(1,len(records)-10), max(200,args.backtest_n+150))
     z_folds = zodiac.precompute_folds(records,n_folds)
-    old_z = [int(fold["actual"] in set(zodiac._rank_stacking(z_folds, index, zodiac.SIGNAL_NAMES)[:3]))
+    old_z = [int(fold["actual"] in set(stacking_topk(zodiac, z_folds, index, 3, zodiac.SIGNAL_NAMES)))
              for index, fold in enumerate(z_folds) if index >= len(z_folds)-args.backtest_n]
     zmap = build_zodiac_map(records)
     current_z,_ = zodiac._compute_fold_probs(records,zmap)
@@ -93,7 +99,7 @@ def main():
     new_z = predict_and_backtest_k(z_folds,current_z,zodiac.SIGNAL_NAMES,z_candidates,3,args.backtest_n)
     if new_z is None: raise SystemExit("三肖 K 策略未产生有效 OOS 结果")
     w_folds = wide.precompute_folds(records,n_folds)
-    old_w = [int(fold["actual"] in set(wide._rank_stacking(w_folds, index, wide.SIGNAL_NAMES)[:20]))
+    old_w = [int(fold["actual"] in set(stacking_topk(wide, w_folds, index, 20, wide.SIGNAL_NAMES)))
              for index, fold in enumerate(w_folds) if index >= len(w_folds)-args.backtest_n]
     current_w = wide._compute_fold_probs(records)
     new_w = predict_and_backtest_k(w_folds,current_w,wide.SIGNAL_NAMES,wide.ALL_NUMS,20,args.backtest_n)
